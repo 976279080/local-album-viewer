@@ -1,0 +1,7 @@
+/data/*
+/.user_data/previews/*
+/.user_data/db/*
+.pytest_cache/
+/.tests
+/generate_license.html
+/.trae

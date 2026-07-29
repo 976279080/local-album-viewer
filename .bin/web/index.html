@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>无联网相册</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="config.js"></script>
+</head>
+<body>
+    <div id="app" v-cloak>
+        <div id="detail-teleport-target"></div>
+        <div class="main" :class="{ 'batch-mode': ui.batchMode }">
+            <div class="toolbar">
+                <div class="toolbar-main">
+                    <div class="toolbar-left">
+                        <div class="custom-select album-select" :class="{ open: openDropdown === 'album' }">
+                            <div class="select-display" @click="toggleDropdown('album')">
+                                {{ filter.album ? getAlbumName(filter.album) : (hasLoaded ? '请选择相册' : '') }}
+                            </div>
+                            <div class="select-options" :class="{ show: openDropdown === 'album' }">
+                                <div 
+                                    v-for="id in albumOrder" 
+                                    :key="id"
+                                    class="select-option"
+                                    :class="{ active: filter.album === id }"
+                                    @click="setFilter('album', id)"
+                                >
+                                    {{ summary.members[id]?.name }}
+                                    <span class="option-count">{{ summary.counts?.by_album?.[id] || 0 }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="custom-select" :class="{ open: openDropdown === 'year' }">
+                            <div class="select-display" @click="toggleDropdown('year')">
+                                {{ filter.year && filter.year !== '' ? filter.year + '年' : '全部年份' }}
+                            </div>
+                            <div class="select-options" :class="{ show: openDropdown === 'year' }">
+                                <div 
+                                    class="select-option"
+                                    :class="{ active: filter.year === '' }"
+                                    @click="setFilter('year', '')"
+                                >
+                                    全部年份
+                                    <span class="option-count">{{ yearAllCount }}</span>
+                                </div>
+                                <div 
+                                    v-for="item in yearDropdownData" 
+                                    :key="item.year"
+                                    class="select-option"
+                                    :class="{ active: filter.year === item.year }"
+                                    @click="setFilter('year', item.year)"
+                                >
+                                    {{ item.year }}年
+                                    <span class="option-count">{{ item.count }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="spacer"></div>
+                    
+                    <div class="toolbar-right">
+                        <div class="custom-select filter-select" :class="{ open: openDropdown === 'type' }">
+                            <div class="select-display" @click="toggleDropdown('type')">
+                                {{ filter.type === 'all' ? '全部类型' : filter.type === 'video' ? '视频' : '图片' }}
+                            </div>
+                            <div class="select-options" :class="{ show: openDropdown === 'type' }">
+                                <div 
+                                    class="select-option"
+                                    :class="{ active: filter.type === 'all' }"
+                                    @click="setFilter('type', 'all')"
+                                >全部类型</div>
+                                <div 
+                                    class="select-option"
+                                    :class="{ active: filter.type === 'image' }"
+                                    @click="setFilter('type', 'image')"
+                                >图片</div>
+                                <div 
+                                    class="select-option"
+                                    :class="{ active: filter.type === 'video' }"
+                                    @click="setFilter('type', 'video')"
+                                >视频</div>
+                            </div>
+                        </div>
+                        
+                        <div class="custom-select filter-select" :class="{ open: openDropdown === 'rating' }">
+                            <div class="select-display" @click="toggleDropdown('rating')">
+                                {{ filter.rating ? (ratingLevels.find(r => r.val.toString() === filter.rating)?.label || '全部评分') : '全部评分' }}
+                            </div>
+                            <div class="select-options" :class="{ show: openDropdown === 'rating' }">
+                                <div 
+                                    class="select-option"
+                                    :class="{ active: !filter.rating }"
+                                    @click="setFilter('rating', '')"
+                                >全部评分</div>
+                                <div 
+                                    v-for="r in ratingLevels" 
+                                    :key="r.val"
+                                    class="select-option"
+                                    :class="{ active: filter.rating === r.val.toString() }"
+                                    @click="setFilter('rating', r.val.toString())"
+                                >{{ r.label }}</div>
+                            </div>
+                        </div>
+                        
+                        <div class="custom-select filter-select" :class="{ open: openDropdown === 'tag' }">
+                            <div class="select-display" @click="toggleDropdown('tag')">
+                                {{ filter.tag || '全部标签' }}
+                            </div>
+                            <div class="select-options" :class="{ show: openDropdown === 'tag' }">
+                                <div 
+                                    class="select-option"
+                                    :class="{ active: !filter.tag }"
+                                    @click="setFilter('tag', '')"
+                                >全部标签</div>
+                                <div 
+                                    v-for="(info, name) in availableTags" 
+                                    :key="name"
+                                    class="select-option"
+                                    :class="{ active: filter.tag === name }"
+                                    :style="{ color: info.color }"
+                                    @click="setFilter('tag', name)"
+                                >{{ name }}</div>
+                            </div>
+                        </div>
+                        
+                        <div class="custom-select filter-select" :class="{ open: openDropdown === 'size' }">
+                            <div class="select-display" @click="toggleDropdown('size')">
+                                {{ photoSize === 'normal' ? '默认大小' : photoSize === 'large' ? '大图' : '小图' }}
+                            </div>
+                            <div class="select-options" :class="{ show: openDropdown === 'size' }">
+                                <div 
+                                    class="select-option"
+                                    :class="{ active: photoSize === 'normal' }"
+                                    @click="photoSize = 'normal'; openDropdown = null"
+                                >默认大小</div>
+                                <div 
+                                    class="select-option"
+                                    :class="{ active: photoSize === 'large' }"
+                                    @click="photoSize = 'large'; openDropdown = null"
+                                >大图</div>
+                                <div 
+                                    class="select-option"
+                                    :class="{ active: photoSize === 'small' }"
+                                    @click="photoSize = 'small'; openDropdown = null"
+                                >小图</div>
+                            </div>
+                        </div>
+                        
+                        <a v-if="editMode" href="/upload.html" class="btn btn-primary" style="text-decoration:none;">上传</a>
+                        
+                        <button v-if="editMode"
+                            class="btn-batch" 
+                            :class="{ active: ui.batchMode }"
+                            @click="toggleBatchMode"
+                        >
+                            {{ ui.batchMode ? '✕ 取消选择' : ' 批量选择' }}
+                        </button>
+
+                        <button 
+                            class="btn-edit-mode"
+                            :class="{ active: editMode }"
+                            @click="toggleEditMode"
+                        >
+                            {{ editMode ? '编辑中' : '编辑模式' }}
+                        </button>
+                    </div>
+                </div>
+                
+                <div v-if="ui.batchMode" class="toolbar-batch">
+                    <span class="batch-info">已选择 {{ ui.selectedPhotos.size }} 张照片</span>
+                    <button class="btn btn-tag" @click="showBatchTagModal">添加标签</button>
+                    <button class="btn btn-clear" @click="batchClearTags">清空标签</button>
+                    <button class="btn btn-danger" @click="batchDelete">删除</button>
+                </div>
+            </div>
+            
+            <div class="content" @click="closeAllDropdowns">
+                <div v-if="hasLoaded && hasAlbumData && filteredPhotos.length === 0" class="empty-state">
+                    <div class="empty-state-icon">📷</div>
+                    <p>暂无照片</p>
+                </div>
+                
+                <template v-else>
+                    <div class="photo-list-container">
+                        <div v-for="year in displayedYears" :key="year" class="year-group">
+                        <div class="year-divider">
+                            {{ year }}年（{{ (groupedPhotos[year].normal.length + groupedPhotos[year].collapsed.length) }}张）
+                            <div class="custom-select" :class="{ open: openSortDropdown === year }" @click.stop>
+                                <div class="select-display" @click="openSortDropdown = openSortDropdown === year ? null : year">
+                                    {{ (sortBy[year] || 'create_time') === 'create_time' ? '拍摄时间' : '更新时间' }} {{ (sortOrder[year] || 'desc') === 'desc' ? '↓' : '↑' }}
+                                </div>
+                                <div class="select-options" :class="{ show: openSortDropdown === year }">
+                                    <div class="select-option" @click.stop="changeSort('create_time_desc', year); openSortDropdown = null">拍摄时间 ↓</div>
+                                    <div class="select-option" @click.stop="changeSort('create_time_asc', year); openSortDropdown = null">拍摄时间 ↑</div>
+                                    <div class="select-option" @click.stop="changeSort('update_time_desc', year); openSortDropdown = null">更新时间 ↓</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="photo-grid" :class="photoSize">
+                            <div
+                                v-for="photo in displayedGroupedPhotos[year].normal"
+                                :key="photo.path_key"
+                                v-memo="[photo, ui.batchMode, editMode, ui.selectedPhotos.has(photo.path_key), openSortDropdown === year, photoSize]"
+                                class="photo-card"
+                                :class="{ 'no-title': !photo.title }"
+                                @click="(e) => ui.batchMode ? toggleSelect(photo.path_key, e) : openDetail(photo)"
+                            >
+                                <div v-if="isVideo(photo)" class="video-thumbnail">
+                                    <img :src="photo.preview_url" :alt="photo.title" @error="handleImageError" @load="handleImageLoad" loading="lazy" />
+                                    <div class="video-badge">🎬</div>
+                                </div>
+                                <img v-else :src="photo.preview_url" :alt="photo.title" @error="handleImageError" @load="handleImageLoad" loading="lazy" />
+                                <div v-if="!isVideo(photo) && photo.comment_count > 0" class="comment-badge">💬 {{ photo.comment_count }}</div>
+                                <span v-if="isModifiedToday(photo.update_time)" class="edit-dot-green"></span>
+
+                                <div
+                                class="rating-heart"
+                                @click.stop="editMode && openRatingPopup($event, photo)"
+                                :style="{ display: ui.batchMode ? 'none' : 'block', cursor: editMode ? 'pointer' : 'default' }"
+                            >
+                                    <span v-html="getHeartSvg(photo.rating)"></span>
+                                </div>
+
+                                <div
+                                    class="checkbox"
+                                    :class="{ checked: isSelected(photo.path_key) }"
+                                    :style="{ display: ui.batchMode ? 'block' : 'none' }"
+                                ></div>
+
+                                <div class="photo-info">
+                                    <div class="photo-info-left">
+                                        <div v-if="photo.title" class="photo-title">{{ photo.title }}</div>
+                                        <div v-if="(photo.tags || []).length > 0" class="photo-tags">
+                                            <span
+                                                v-for="tag in (photo.tags || []).slice(0, 3)"
+                                                :key="tag"
+                                                class="photo-tag"
+                                                :style="{ background: getTagColor(tag) }"
+                                            >{{ tag }}</span>
+                                            <span v-if="(photo.tags || []).length > 3" class="photo-tag" style="background:#999">+{{ (photo.tags || []).length - 3 }}</span>
+                                        </div>
+                                    </div>
+                                    <div v-if="formatDate(photo.create_time)" class="photo-date">{{ formatDate(photo.create_time) }}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div
+                            v-if="groupedPhotos[year].collapsed.length > 0"
+                            class="year-collapsed-toggle"
+                            :class="{ expanded: isCollapsedVisible(year) }"
+                            @click="toggleCollapsed(year)"
+                        >
+                            <span class="toggle-icon">{{ isCollapsedVisible(year) ? '▼' : '▶' }}</span>
+                            {{ isCollapsedVisible(year) ? '隐藏' : '显示' }} {{ groupedPhotos[year].collapsed.length }} 张折叠照片
+                        </div>
+
+                        <div
+                            v-if="groupedPhotos[year].collapsed.length > 0"
+                            class="photo-grid collapsed-grid"
+                            :class="{ hidden: !isCollapsedVisible(year), [photoSize]: true }"
+                        >
+                            <div
+                            v-for="photo in displayedGroupedPhotos[year].collapsed"
+                            :key="photo.path_key"
+                            v-memo="[photo, ui.batchMode, editMode, ui.selectedPhotos.has(photo.path_key), openSortDropdown === year, photoSize]"
+                            class="photo-card"
+                            :class="{ 'no-title': !photo.title }"
+                            @click="(e) => ui.batchMode ? toggleSelect(photo.path_key, e) : openDetail(photo)"
+                        >
+                                <div v-if="isVideo(photo)" class="video-thumbnail">
+                                    <img :src="photo.preview_url" :alt="photo.title" @error="handleImageError" @load="handleImageLoad" loading="lazy" />
+                                    <div class="video-badge">🎬</div>
+                                </div>
+                                <img v-else :src="photo.preview_url" :alt="photo.title" @error="handleImageError" @load="handleImageLoad" loading="lazy" />
+                                <div v-if="!isVideo(photo) && photo.comment_count > 0" class="comment-badge">💬 {{ photo.comment_count }}</div>
+                                <span v-if="isModifiedToday(photo.update_time)" class="edit-dot-green"></span>
+
+                                <div
+                                class="rating-heart"
+                                @click.stop="editMode && openRatingPopup($event, photo)"
+                                :style="{ display: ui.batchMode ? 'none' : 'block', cursor: editMode ? 'pointer' : 'default' }"
+                            >
+                                    <span v-html="getHeartSvg(photo.rating)"></span>
+                                </div>
+
+                                <div
+                                    class="checkbox"
+                                    :class="{ checked: isSelected(photo.path_key) }"
+                                    :style="{ display: ui.batchMode ? 'block' : 'none' }"
+                                ></div>
+
+                                <div class="photo-info">
+                                    <div class="photo-info-left">
+                                        <div v-if="photo.title" class="photo-title">{{ photo.title }}</div>
+                                        <div v-if="(photo.tags || []).length > 0" class="photo-tags">
+                                            <span
+                                                v-for="tag in (photo.tags || []).slice(0, 3)"
+                                                :key="tag"
+                                                class="photo-tag"
+                                                :style="{ background: getTagColor(tag) }"
+                                            >{{ tag }}</span>
+                                        </div>
+                                    </div>
+                                    <div v-if="formatDate(photo.create_time)" class="photo-date">{{ formatDate(photo.create_time) }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    </div>
+                </template>
+            </div>
+            
+            <div 
+                class="rating-popup" 
+                :class="{ show: ui.showRatingPopup }"
+                :style="{ left: ui.ratingTarget?.rect?.left + 'px', top: (ui.ratingTarget?.rect?.top - 40) + 'px' }"
+                @click.stop
+            >
+                <div v-for="r in ratingLevels" :key="r.val" @click="setRating(r.val)" style="display:inline-block;margin:0 4px;cursor:pointer;">
+                    <span v-html="getHeartSvg(r.val)"></span>
+                </div>
+            </div>
+            
+            <Teleport to="#detail-teleport-target">
+            <div 
+                class="detail-modal" 
+                :class="{ show: detailState.showDetail, 'video-detail': isVideo(detailState.detailPhoto) }"
+                @mousedown.self="closeDetail"
+            >
+                <button class="detail-close" @click.stop="closeDetail">✕</button>
+                
+                <div class="detail-left" @click="handleDetailLeftClick">
+                    <button class="detail-close" @click.stop="closeDetail">✕</button>
+                    <button class="detail-nav prev" @click.stop="navPhoto(-1)">‹</button>
+                    <button class="detail-nav next" @click.stop="navPhoto(1)">›</button>
+                    <button v-if="!isVideo(detailState.detailPhoto)" class="detail-zoom" @click.stop="openLargeViewer(detailState.detailPhoto, isVideo)" title="查看大图">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            <line x1="11" y1="8" x2="11" y2="14"></line>
+                            <line x1="8" y1="11" x2="14" y2="11"></line>
+                        </svg>
+                    </button>
+
+                    <img
+                        v-if="detailState.detailPhoto && !isVideo(detailState.detailPhoto) && detailState.fileExists"
+                        :src="detailState.detailPhoto.original_url"
+                        :alt="detailState.detailPhoto.title"
+                        @click.stop="openLargeViewer(detailState.detailPhoto, isVideo)"
+                        @error="handleDetailImageError"
+                    />
+                    <div 
+                        v-else-if="detailState.detailPhoto && !isVideo(detailState.detailPhoto) && !detailState.fileExists"
+                        class="photo-not-found"
+                    >
+                        <div class="photo-not-found-icon">📷</div>
+                        <div class="photo-not-found-text">照片不存在</div>
+                        <div class="photo-not-found-hint">文件可能已被删除，请从数据库中移除</div>
+                    </div>
+                    <video
+                        v-else-if="detailState.detailPhoto"
+                        controls
+                        autoplay
+                        loop
+                        playsinline
+                        tabindex="0"
+                        @click.stop="toggleVideoPlay"
+                        @keydown.capture="onVideoKeydown"
+                        @loadedmetadata="restoreVideoProgress"
+                        @ended="onVideoEnded"
+                        @pause="saveCurrentVideoProgress"
+                        ref="detailVideo"
+                    >
+                        <source :src="detailState.detailPhoto.original_url" />
+                    </video>
+                </div>
+                
+                <div class="detail-right" v-if="detailState.detailPhoto">
+                    <div class="detail-content">
+                        <div class="detail-group">
+                            <div class="detail-section row"><label>文件路径</label><div style="word-break: break-all;">{{ detailState.detailPhoto.absolute_path || '-' }}</div></div>
+                            <div class="detail-section row"><label>文件大小</label><div>{{ formatFileSize(detailState.detailPhoto.size) }}</div></div>
+                            <div class="detail-section row"><label>文件宽高</label><div>{{ detailState.detailPhoto.width && detailState.detailPhoto.height ? detailState.detailPhoto.width + ' × ' + detailState.detailPhoto.height : '-' }}</div></div>
+                            <div class="detail-section row">
+                                <label>拍摄时间</label>
+                                <div v-if="canEditTime" class="time-edit-wrapper">
+                                    <div class="time-input-display">
+                                        <span>{{ formatEditTime() }}</span>
+                                        <div class="time-picker-wrapper">
+                                            <svg class="time-picker-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                                <line x1="16" y1="2" x2="16" y2="6"/>
+                                                <line x1="8" y1="2" x2="8" y2="6"/>
+                                                <line x1="3" y1="10" x2="21" y2="10"/>
+                                            </svg>
+                                            <input 
+                                                type="datetime-local" 
+                                                v-model="editCreateTime"
+                                                step="60"
+                                                class="time-input-overlay"
+                                                @change="onTimeChange"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div v-else>{{ formatDateTime(detailState.detailPhoto.create_time, detailState.detailPhoto.year) }}</div>
+                            </div>
+                        </div>
+                        
+                        <div class="detail-group" style="display:flex;flex-direction:column;gap:12px;">
+                            <div class="detail-section row">
+                                <label>标题</label>
+                                <input v-if="editMode"
+                                    type="text" 
+                                    v-model="detailState.detailPhoto.title"
+                                    placeholder="输入标题（最多15字）"
+                                    maxlength="15"
+                                />
+                                <span v-else class="detail-text-readonly">{{ detailState.detailPhoto.title || '无' }}</span>
+                            </div>
+                            
+                            <div class="detail-section row">
+                                <label>标签</label>
+                                <div v-if="editMode" class="tag-input-inline">
+                                    <div class="tag-chip-container">
+                                        <span 
+                                            v-for="tag in (detailState.detailPhoto.tags || [])" 
+                                            :key="tag"
+                                            class="tag-badge"
+                                            :style="{ background: getTagColor(tag) }"
+                                        >
+                                            {{ tag }}
+                                            <span class="remove" @click.stop="removeTag(tag)">×</span>
+                                        </span>
+                                        <input 
+                                            type="text" 
+                                            v-model="tagInputValue"
+                                            placeholder="输入标签（最多15字）"
+                                            maxlength="15"
+                                            @keydown.enter.prevent="addDetailTag()"
+                                            @focus="ui.showTagDropdown = true"
+                                            @input="ui.showTagDropdown = true"
+                                        />
+                                    </div>
+                                    <div 
+                                        class="tag-dropdown-detail" 
+                                        :class="{ show: ui.showTagDropdown && (filteredTags.length > 0 || tagInputValue.trim()) }"
+                                    >
+                                        <div 
+                                            v-for="tag in filteredTags" 
+                                            :key="tag"
+                                            class="tag-option"
+                                            @click.stop="selectTag(tag)"
+                                        >
+                                            <span class="tag-color" :style="{ background: getTagColor(tag) }"></span>
+                                            {{ tag }}
+                                        </div>
+                                        <div 
+                                            v-if="tagInputValue.trim() && !filteredTags.includes(tagInputValue.trim())"
+                                            class="tag-option"
+                                            @click.stop="createAndAddTag(tagInputValue.trim())"
+                                            style="color:#667eea;"
+                                        >
+                                            + 创建标签 "{{ tagInputValue.trim() }}"
+                                        </div>
+                                    </div>
+                                </div>
+                                <div v-else class="detail-tags-readonly">
+                                    <span
+                                        v-for="tag in (detailState.detailPhoto.tags || [])"
+                                        :key="tag"
+                                        class="tag-badge"
+                                        :style="{ background: getTagColor(tag) }"
+                                    >{{ tag }}</span>
+                                    <span v-if="(detailState.detailPhoto.tags || []).length === 0" class="detail-text-readonly">无</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="detail-group comment-group">
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                                <label>评论</label>
+                                <button @click="ui.showCommentInput = !ui.showCommentInput" style="padding:2px 8px;font-size:12px;color:#667eea;border:1px solid #667eea;border-radius:4px;background:white;cursor:pointer;">+</button>
+                            </div>
+                            <div class="comment-input-row" :class="{ show: ui.showCommentInput }">
+                                <div style="display:flex;gap:8px;">
+                                    <input 
+                                        type="text" 
+                                        v-model="ui.commentInput"
+                                        placeholder="写评论..."
+                                        maxlength="200"
+                                        style="flex:1;padding:6px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px;"
+                                    />
+                                    <button @click="addComment" style="padding:6px 16px;min-width:56px;background:#667eea;color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px;white-space:nowrap;">发送</button>
+                                </div>
+                            </div>
+                            <div class="comment-list">
+                                <div 
+                                    v-for="(comment, idx) in (detailState.detailPhoto.comments || [])" 
+                                    :key="idx"
+                                    class="comment-item"
+                                >
+                                    <span class="comment-text">{{ comment.text }}</span>
+                                    <span class="comment-time">{{ formatCommentDate(comment.created_at) }}</span>
+                                    <span v-if="editMode" class="comment-delete" @click="deleteComment(comment.id, idx)">×</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div v-if="editMode" class="detail-actions">
+                        <button
+                            class="save-btn"
+                            @click="savePhotoAndClose"
+                            :disabled="!detailState.fileExists"
+                            :class="{ disabled: !detailState.fileExists }"
+                        >保存修改</button>
+                        <button class="delete-btn" @click="deletePhoto">删除照片</button>
+                    </div>
+                    <div v-else class="detail-actions-placeholder"></div>
+                </div>
+            </div>
+            </Teleport>
+            
+            <div
+                v-if="ui.showBatchTagModal"
+                class="batch-tag-modal"
+                :class="{ show: ui.showBatchTagModal }"
+                @click.self="closeBatchTagModal"
+            >
+                <div class="batch-tag-modal-content">
+                    <h3>批量添加标签</h3>
+                    <div class="tag-input-inline">
+                        <div class="tag-chip-container">
+                            <span 
+                                v-for="tag in ui.batchTags" 
+                                :key="tag"
+                                class="tag-badge"
+                                :style="{ background: getTagColor(tag) }"
+                            >
+                                {{ tag }}
+                                <span class="remove" @click.stop="removeBatchTag(tag)">×</span>
+                            </span>
+                            <input 
+                                type="text" 
+                                v-model="ui.batchTagInput"
+                                placeholder="输入标签（最多15字）"
+                                maxlength="15"
+                                @keydown.enter.prevent="addBatchTag(ui.batchTagInput)"
+                                @focus="ui.showBatchTagDropdown = true"
+                                @input="ui.showBatchTagDropdown = true"
+                            />
+                        </div>
+                        <div 
+                                class="tag-dropdown-detail" 
+                                :class="{ show: ui.showBatchTagDropdown && (batchFilteredTags.length > 0 || ui.batchTagInput.trim()) }"
+                            >
+                            <div 
+                                v-for="tag in batchFilteredTags" 
+                                :key="tag"
+                                class="tag-option"
+                                @click.stop="selectBatchTag(tag)"
+                            >
+                                <span class="tag-color" :style="{ background: getTagColor(tag) }"></span>
+                                {{ tag }}
+                            </div>
+                            <div 
+                                v-if="ui.batchTagInput.trim() && !batchFilteredTags.includes(ui.batchTagInput.trim())"
+                                class="tag-option"
+                                @click.stop="addBatchTag(ui.batchTagInput.trim())"
+                                style="color:#667eea;"
+                            >
+                                + 创建标签 "{{ ui.batchTagInput.trim() }}"
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-actions">
+                        <button class="btn" @click="closeBatchTagModal">取消</button>
+                        <button class="btn btn-primary" @click="confirmBatchTag">确定</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="wb-viewer" :class="{ show: ui.showLargeViewer }" @mousedown.self="closeLargeViewer">
+                <div class="viewer-toolbar">
+                    <button class="tool-btn" @click="viewerCopy" title="复制图片">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                    </button>
+                    <button class="tool-btn" @click="viewerZoomOut" title="缩小">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                    </button>
+                    <span class="scale-text">{{ Math.round((ui.viewerFitMode ? ui.viewerFitScale : ui.viewerScale) * 100) }}%</span>
+                    <button class="tool-btn" @click="viewerZoomIn" title="放大">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                    </button>
+                    <button class="tool-btn" @click="viewerFit" title="适应窗口">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+                        </svg>
+                    </button>
+                    <button class="tool-btn origin-btn" @click="viewerOrigin" title="查看原图">1:1</button>
+                    <button class="tool-btn close" @click="closeLargeViewer" title="关闭">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+                <div class="viewer-content" @mousedown.self="closeLargeViewer" @wheel.prevent>
+                    <div
+                        class="img-container"
+                        :style="{ transform: `translate(${ui.viewerPosX}px, ${ui.viewerPosY}px) scale(${ui.viewerFitMode ? ui.viewerFitScale : ui.viewerScale})` }"
+                        @mousedown="startViewerDrag"
+                    >
+                        <img
+                            class="preview-img"
+                            :class="{ 'fit-mode': ui.viewerFitMode, 'origin-mode': !ui.viewerFitMode }"
+                            :src="detailState.detailPhoto ? detailState.detailPhoto.original_url : ''"
+                            @dblclick="onViewerDblClick"
+                            @dragstart.prevent
+                        />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="notification-container">
+            <transition-group name="notif">
+                <div
+                    v-for="n in notifications"
+                    :key="n.id"
+                    class="notification"
+                    :class="'notif-' + n.type"
+                >
+                    <span class="notif-icon" v-if="n.type === 'success'">✓</span>
+                    <span class="notif-icon" v-else-if="n.type === 'error'">✕</span>
+                    <span class="notif-icon" v-else-if="n.type === 'warning'">!</span>
+                    <span class="notif-icon" v-else>ℹ</span>
+                    <span class="notif-text">{{ n.msg }}</span>
+                </div>
+            </transition-group>
+        </div>
+
+        <transition name="confirm-fade">
+            <div v-if="confirmState.show" class="confirm-overlay" :class="{ show: confirmState.show }" @click.self="handleConfirm(false)">
+                <transition name="confirm-pop" appear>
+                    <div class="confirm-dialog" v-if="confirmState.show">
+                        <div class="confirm-icon" :class="{ danger: confirmState.danger }">
+                            <span v-if="confirmState.danger">⚠</span>
+                            <span v-else>?</span>
+                        </div>
+                        <h3 class="confirm-title">{{ confirmState.title }}</h3>
+                        <p class="confirm-message">{{ confirmState.message }}</p>
+                        <div class="confirm-actions">
+                            <button class="confirm-btn-cancel" @click="handleConfirm(false)">{{ confirmState.cancelText }}</button>
+                            <button
+                                class="confirm-btn-ok"
+                                :class="{ danger: confirmState.danger }"
+                                @click="handleConfirm(true)"
+                            >{{ confirmState.confirmText }}</button>
+                        </div>
+                    </div>
+                </transition>
+            </div>
+        </transition>
+    </div>
+    <script src="vue.global.min.js"></script>
+    <script src="modules/constants.js?v=34"></script>
+    <script src="modules/utils.js?v=32"></script>
+    <script src="modules/api.js?v=33"></script>
+    <script src="modules/use-notifications.js?v=32"></script>
+    <script src="modules/use-confirm.js?v=32"></script>
+    <script src="modules/use-password.js?v=34"></script>
+    <script src="modules/use-license.js?v=3"></script>
+    <script src="modules/use-viewer.js?v=32"></script>
+    <script src="modules/use-batch.js?v=32"></script>
+    <script src="modules/use-photos.js?v=34"></script>
+    <script src="modules/use-filter.js?v=32"></script>
+    <script src="modules/use-rating.js?v=32"></script>
+    <script src="modules/use-tags.js?v=33"></script>
+    <script src="modules/use-detail.js?v=33"></script>
+    <script src="app.js?v=34"></script>
+</body>
+</html>

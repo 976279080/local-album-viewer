@@ -1,0 +1,1185 @@
+2026-07-26 21:44:41 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-26 21:44:41 [INFO] main: summary加载完成
+2026-07-26 21:44:41 [INFO] main: 数据加载完成
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 58483)
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 683, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 360, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/Users/apple/Desktop/Qorder/.bin/src/main.py", line 49, in __call__
+    return PhotoHandler(*args, cache=self.cache_ref, cache_lock=self.lock_ref,
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 49, in __init__
+    super().__init__(*args, **kwargs)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 747, in __init__
+    self.handle()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 429, in handle
+    self.handle_one_request()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 395, in handle_one_request
+    self.raw_requestline = self.rfile.readline(65537)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socket.py", line 704, in readinto
+    return self._sock.recv_into(b)
+ConnectionResetError: [Errno 54] Connection reset by peer
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 59259)
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 683, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 360, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/Users/apple/Desktop/Qorder/.bin/src/main.py", line 49, in __call__
+    return PhotoHandler(*args, cache=self.cache_ref, cache_lock=self.lock_ref,
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 49, in __init__
+    super().__init__(*args, **kwargs)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 747, in __init__
+    self.handle()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 429, in handle
+    self.handle_one_request()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 395, in handle_one_request
+    self.raw_requestline = self.rfile.readline(65537)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socket.py", line 704, in readinto
+    return self._sock.recv_into(b)
+ConnectionResetError: [Errno 54] Connection reset by peer
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 60636)
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 683, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 360, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/Users/apple/Desktop/Qorder/.bin/src/main.py", line 49, in __call__
+    return PhotoHandler(*args, cache=self.cache_ref, cache_lock=self.lock_ref,
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 49, in __init__
+    super().__init__(*args, **kwargs)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 747, in __init__
+    self.handle()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 429, in handle
+    self.handle_one_request()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 395, in handle_one_request
+    self.raw_requestline = self.rfile.readline(65537)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socket.py", line 704, in readinto
+    return self._sock.recv_into(b)
+ConnectionResetError: [Errno 54] Connection reset by peer
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 60638)
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 683, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 360, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/Users/apple/Desktop/Qorder/.bin/src/main.py", line 49, in __call__
+    return PhotoHandler(*args, cache=self.cache_ref, cache_lock=self.lock_ref,
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 49, in __init__
+    super().__init__(*args, **kwargs)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 747, in __init__
+    self.handle()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 429, in handle
+    self.handle_one_request()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 395, in handle_one_request
+    self.raw_requestline = self.rfile.readline(65537)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socket.py", line 704, in readinto
+    return self._sock.recv_into(b)
+ConnectionResetError: [Errno 54] Connection reset by peer
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 63182)
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 683, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 360, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/Users/apple/Desktop/Qorder/.bin/src/main.py", line 49, in __call__
+    return PhotoHandler(*args, cache=self.cache_ref, cache_lock=self.lock_ref,
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 49, in __init__
+    super().__init__(*args, **kwargs)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 747, in __init__
+    self.handle()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 429, in handle
+    self.handle_one_request()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 395, in handle_one_request
+    self.raw_requestline = self.rfile.readline(65537)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socket.py", line 704, in readinto
+    return self._sock.recv_into(b)
+ConnectionResetError: [Errno 54] Connection reset by peer
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 60634)
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 683, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 360, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/Users/apple/Desktop/Qorder/.bin/src/main.py", line 49, in __call__
+    return PhotoHandler(*args, cache=self.cache_ref, cache_lock=self.lock_ref,
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 49, in __init__
+    super().__init__(*args, **kwargs)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 747, in __init__
+    self.handle()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 429, in handle
+    self.handle_one_request()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 395, in handle_one_request
+    self.raw_requestline = self.rfile.readline(65537)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socket.py", line 704, in readinto
+    return self._sock.recv_into(b)
+ConnectionResetError: [Errno 54] Connection reset by peer
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 65318)
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 683, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 360, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/Users/apple/Desktop/Qorder/.bin/src/main.py", line 49, in __call__
+    return PhotoHandler(*args, cache=self.cache_ref, cache_lock=self.lock_ref,
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 49, in __init__
+    super().__init__(*args, **kwargs)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 747, in __init__
+    self.handle()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 429, in handle
+    self.handle_one_request()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 395, in handle_one_request
+    self.raw_requestline = self.rfile.readline(65537)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socket.py", line 704, in readinto
+    return self._sock.recv_into(b)
+ConnectionResetError: [Errno 54] Connection reset by peer
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 50539)
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 683, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 360, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/Users/apple/Desktop/Qorder/.bin/src/main.py", line 49, in __call__
+    return PhotoHandler(*args, cache=self.cache_ref, cache_lock=self.lock_ref,
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 49, in __init__
+    super().__init__(*args, **kwargs)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 747, in __init__
+    self.handle()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 429, in handle
+    self.handle_one_request()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 395, in handle_one_request
+    self.raw_requestline = self.rfile.readline(65537)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socket.py", line 704, in readinto
+    return self._sock.recv_into(b)
+ConnectionResetError: [Errno 54] Connection reset by peer
+----------------------------------------
+2026-07-27 00:29:22 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-27 00:29:22 [INFO] main: summary加载完成
+2026-07-27 00:29:22 [INFO] main: 数据加载完成
+2026-07-27 00:42:10 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-27 00:42:10 [INFO] main: summary加载完成
+2026-07-27 00:42:10 [INFO] main: 数据加载完成
+2026-07-27 00:42:35 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-27 00:42:35 [INFO] main: summary加载完成
+2026-07-27 00:42:35 [INFO] main: 数据加载完成
+2026-07-27 01:48:29 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-27 01:48:29 [INFO] main: summary加载完成
+2026-07-27 01:48:29 [INFO] main: 数据加载完成
+2026-07-27 22:01:33 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-27 22:01:33 [INFO] main: summary加载完成
+2026-07-27 22:01:33 [INFO] main: 数据加载完成
+2026-07-27 22:08:34 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-27 22:08:35 [INFO] main: summary加载完成
+2026-07-27 22:08:35 [INFO] main: 数据加载完成
+Traceback (most recent call last):
+  File "/Users/apple/Desktop/Qorder/.bin/src/main.py", line 82, in <module>
+    run_server()
+  File "/Users/apple/Desktop/Qorder/.bin/src/main.py", line 54, in run_server
+    server = ThreadedHTTPServer(('0.0.0.0', SERVER_PORT), handler_factory)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 452, in __init__
+    self.server_bind()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 466, in server_bind
+    self.socket.bind(self.server_address)
+OSError: [Errno 48] Address already in use
+Traceback (most recent call last):
+  File "/Users/apple/Desktop/Qorder/.bin/src/main.py", line 82, in <module>
+    run_server()
+  File "/Users/apple/Desktop/Qorder/.bin/src/main.py", line 54, in run_server
+    server = ThreadedHTTPServer(('0.0.0.0', SERVER_PORT), handler_factory)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 452, in __init__
+    self.server_bind()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 466, in server_bind
+    self.socket.bind(self.server_address)
+OSError: [Errno 48] Address already in use
+2026-07-28 23:06:48 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-28 23:06:48 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-28 23:06:48 [INFO] main: summary加载完成
+2026-07-28 23:06:48 [INFO] main: summary加载完成
+2026-07-28 23:06:48 [INFO] main: 数据加载完成
+2026-07-28 23:06:48 [INFO] main: 数据加载完成
+2026-07-28 23:07:16 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-28 23:07:16 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-28 23:07:16 [INFO] main: summary加载完成
+2026-07-28 23:07:16 [INFO] main: summary加载完成
+2026-07-28 23:07:16 [INFO] main: 数据加载完成
+2026-07-28 23:07:16 [INFO] main: 数据加载完成
+2026-07-28 23:08:04 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-28 23:08:04 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-28 23:08:04 [INFO] main: summary加载完成
+2026-07-28 23:08:04 [INFO] main: summary加载完成
+2026-07-28 23:08:04 [INFO] main: 数据加载完成
+2026-07-28 23:08:04 [INFO] main: 数据加载完成
+Traceback (most recent call last):
+  File "/Users/apple/Desktop/Qorder/.bin/src/main.py", line 82, in <module>
+    run_server()
+  File "/Users/apple/Desktop/Qorder/.bin/src/main.py", line 54, in run_server
+    server = ThreadedHTTPServer(('0.0.0.0', SERVER_PORT), handler_factory)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 452, in __init__
+    self.server_bind()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 466, in server_bind
+    self.socket.bind(self.server_address)
+OSError: [Errno 48] Address already in use
+Traceback (most recent call last):
+  File "/Users/apple/Desktop/Qorder/.bin/src/main.py", line 82, in <module>
+    run_server()
+  File "/Users/apple/Desktop/Qorder/.bin/src/main.py", line 54, in run_server
+    server = ThreadedHTTPServer(('0.0.0.0', SERVER_PORT), handler_factory)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 452, in __init__
+    self.server_bind()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 466, in server_bind
+    self.socket.bind(self.server_address)
+OSError: [Errno 48] Address already in use
+Traceback (most recent call last):
+  File "/Users/apple/Desktop/Qorder/.bin/src/main.py", line 82, in <module>
+    run_server()
+  File "/Users/apple/Desktop/Qorder/.bin/src/main.py", line 54, in run_server
+    server = ThreadedHTTPServer(('0.0.0.0', SERVER_PORT), handler_factory)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 452, in __init__
+    self.server_bind()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 466, in server_bind
+    self.socket.bind(self.server_address)
+OSError: [Errno 48] Address already in use
+2026-07-28 23:18:53 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-28 23:18:53 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-28 23:18:53 [INFO] main: summary加载完成
+2026-07-28 23:18:53 [INFO] main: summary加载完成
+2026-07-28 23:18:53 [INFO] main: 数据加载完成
+2026-07-28 23:18:53 [INFO] main: 数据加载完成
+Traceback (most recent call last):
+  File "/Users/apple/Desktop/Qorder/.bin/src/main.py", line 82, in <module>
+    run_server()
+  File "/Users/apple/Desktop/Qorder/.bin/src/main.py", line 54, in run_server
+    server = ThreadedHTTPServer(('0.0.0.0', SERVER_PORT), handler_factory)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 452, in __init__
+    self.server_bind()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 466, in server_bind
+    self.socket.bind(self.server_address)
+OSError: [Errno 48] Address already in use
+Traceback (most recent call last):
+  File "/Users/apple/Desktop/Qorder/.bin/src/main.py", line 82, in <module>
+    run_server()
+  File "/Users/apple/Desktop/Qorder/.bin/src/main.py", line 54, in run_server
+    server = ThreadedHTTPServer(('0.0.0.0', SERVER_PORT), handler_factory)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 452, in __init__
+    self.server_bind()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 466, in server_bind
+    self.socket.bind(self.server_address)
+OSError: [Errno 48] Address already in use
+2026-07-28 23:36:51 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-28 23:36:51 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-28 23:36:51 [INFO] main: summary加载完成
+2026-07-28 23:36:51 [INFO] main: summary加载完成
+2026-07-28 23:36:51 [INFO] main: 数据加载完成
+2026-07-28 23:36:51 [INFO] main: 数据加载完成
+2026-07-28 23:57:06 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-28 23:57:06 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-28 23:57:06 [INFO] main: summary加载完成
+2026-07-28 23:57:06 [INFO] main: summary加载完成
+2026-07-28 23:57:06 [INFO] main: 数据加载完成
+2026-07-28 23:57:06 [INFO] main: 数据加载完成
+2026-07-29 10:35:32 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-29 10:35:32 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-29 10:35:32 [INFO] main: summary加载完成
+2026-07-29 10:35:32 [INFO] main: summary加载完成
+2026-07-29 10:35:32 [INFO] main: 数据加载完成
+2026-07-29 10:35:32 [INFO] main: 数据加载完成
+2026-07-29 11:35:51 [INFO] main: 数据库初始化完成
+2026-07-29 11:35:51 [INFO] main: 数据库初始化完成
+2026-07-29 11:35:51 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-29 11:35:51 [INFO] main: 服务已启动: http://localhost:8089
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 59187)
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 683, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 360, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 49, in __init__
+    super().__init__(*args, **kwargs)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 747, in __init__
+    self.handle()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 427, in handle
+    self.handle_one_request()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 415, in handle_one_request
+    method()
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 103, in do_GET
+    self._handle_image_request(self.path, True)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 131, in _handle_image_request
+    handler = self._routes['GET'].get(req_path)
+AttributeError: 'PhotoHandler' object has no attribute '_routes'
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 59189)
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 683, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 360, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 49, in __init__
+    super().__init__(*args, **kwargs)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 747, in __init__
+    self.handle()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 427, in handle
+    self.handle_one_request()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 415, in handle_one_request
+    method()
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 103, in do_GET
+    self._handle_image_request(self.path, True)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 131, in _handle_image_request
+    handler = self._routes['GET'].get(req_path)
+AttributeError: 'PhotoHandler' object has no attribute '_routes'
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 59196)
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 683, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 360, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 49, in __init__
+    super().__init__(*args, **kwargs)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 747, in __init__
+    self.handle()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 427, in handle
+    self.handle_one_request()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 415, in handle_one_request
+    method()
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 103, in do_GET
+    self._handle_image_request(self.path, True)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 131, in _handle_image_request
+    handler = self._routes['GET'].get(req_path)
+AttributeError: 'PhotoHandler' object has no attribute '_routes'
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 59199)
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 683, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 360, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 49, in __init__
+    super().__init__(*args, **kwargs)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 747, in __init__
+    self.handle()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 427, in handle
+    self.handle_one_request()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 415, in handle_one_request
+    method()
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 103, in do_GET
+    self._handle_image_request(self.path, True)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 131, in _handle_image_request
+    handler = self._routes['GET'].get(req_path)
+AttributeError: 'PhotoHandler' object has no attribute '_routes'
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 59200)
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 683, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 360, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 49, in __init__
+    super().__init__(*args, **kwargs)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 747, in __init__
+    self.handle()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 427, in handle
+    self.handle_one_request()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 415, in handle_one_request
+    method()
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 103, in do_GET
+    self._handle_image_request(self.path, True)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 131, in _handle_image_request
+    handler = self._routes['GET'].get(req_path)
+AttributeError: 'PhotoHandler' object has no attribute '_routes'
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 59201)
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 683, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 360, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 49, in __init__
+    super().__init__(*args, **kwargs)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 747, in __init__
+    self.handle()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 427, in handle
+    self.handle_one_request()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 415, in handle_one_request
+    method()
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 103, in do_GET
+    self._handle_image_request(self.path, True)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 131, in _handle_image_request
+    handler = self._routes['GET'].get(req_path)
+AttributeError: 'PhotoHandler' object has no attribute '_routes'
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 59209)
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 683, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 360, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 49, in __init__
+    super().__init__(*args, **kwargs)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 747, in __init__
+    self.handle()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 427, in handle
+    self.handle_one_request()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 415, in handle_one_request
+    method()
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 103, in do_GET
+    self._handle_image_request(self.path, True)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 131, in _handle_image_request
+    handler = self._routes['GET'].get(req_path)
+AttributeError: 'PhotoHandler' object has no attribute '_routes'
+----------------------------------------
+2026-07-29 11:39:29 [INFO] main: 数据库初始化完成
+2026-07-29 11:39:29 [INFO] main: 数据库初始化完成
+2026-07-29 11:39:29 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-29 11:39:29 [INFO] main: 服务已启动: http://localhost:8089
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 59223)
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 683, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 360, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 49, in __init__
+    super().__init__(*args, **kwargs)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 747, in __init__
+    self.handle()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 427, in handle
+    self.handle_one_request()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 415, in handle_one_request
+    method()
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 103, in do_GET
+    self._handle_image_request(self.path, True)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 133, in _handle_image_request
+    handler(query)
+TypeError: 'str' object is not callable
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 59225)
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 683, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 360, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 49, in __init__
+    super().__init__(*args, **kwargs)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 747, in __init__
+    self.handle()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 427, in handle
+    self.handle_one_request()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 415, in handle_one_request
+    method()
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 103, in do_GET
+    self._handle_image_request(self.path, True)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 133, in _handle_image_request
+    handler(query)
+TypeError: 'str' object is not callable
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 59235)
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 683, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 360, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 49, in __init__
+    super().__init__(*args, **kwargs)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 747, in __init__
+    self.handle()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 427, in handle
+    self.handle_one_request()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 415, in handle_one_request
+    method()
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 103, in do_GET
+    self._handle_image_request(self.path, True)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 133, in _handle_image_request
+    handler(query)
+TypeError: 'str' object is not callable
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 59237)
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 683, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 360, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 49, in __init__
+    super().__init__(*args, **kwargs)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 747, in __init__
+    self.handle()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 427, in handle
+    self.handle_one_request()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 415, in handle_one_request
+    method()
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 103, in do_GET
+    self._handle_image_request(self.path, True)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 133, in _handle_image_request
+    handler(query)
+TypeError: 'str' object is not callable
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 59238)
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 683, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 360, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 49, in __init__
+    super().__init__(*args, **kwargs)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 747, in __init__
+    self.handle()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 427, in handle
+    self.handle_one_request()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 415, in handle_one_request
+    method()
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 103, in do_GET
+    self._handle_image_request(self.path, True)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 133, in _handle_image_request
+    handler(query)
+TypeError: 'str' object is not callable
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 59242)
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 683, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 360, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 49, in __init__
+    super().__init__(*args, **kwargs)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 747, in __init__
+    self.handle()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 427, in handle
+    self.handle_one_request()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 415, in handle_one_request
+    method()
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 103, in do_GET
+    self._handle_image_request(self.path, True)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 133, in _handle_image_request
+    handler(query)
+TypeError: 'str' object is not callable
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 59244)
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 683, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 360, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 49, in __init__
+    super().__init__(*args, **kwargs)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 747, in __init__
+    self.handle()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 427, in handle
+    self.handle_one_request()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 415, in handle_one_request
+    method()
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 103, in do_GET
+    self._handle_image_request(self.path, True)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 133, in _handle_image_request
+    handler(query)
+TypeError: 'str' object is not callable
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 59250)
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 683, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 360, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 49, in __init__
+    super().__init__(*args, **kwargs)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 747, in __init__
+    self.handle()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 427, in handle
+    self.handle_one_request()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 415, in handle_one_request
+    method()
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 103, in do_GET
+    self._handle_image_request(self.path, True)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 133, in _handle_image_request
+    handler(query)
+TypeError: 'str' object is not callable
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 59252)
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 683, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 360, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 49, in __init__
+    super().__init__(*args, **kwargs)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 747, in __init__
+    self.handle()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 427, in handle
+    self.handle_one_request()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 415, in handle_one_request
+    method()
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 103, in do_GET
+    self._handle_image_request(self.path, True)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 133, in _handle_image_request
+    handler(query)
+TypeError: 'str' object is not callable
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 59254)
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 683, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 360, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 49, in __init__
+    super().__init__(*args, **kwargs)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 747, in __init__
+    self.handle()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 427, in handle
+    self.handle_one_request()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 415, in handle_one_request
+    method()
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 103, in do_GET
+    self._handle_image_request(self.path, True)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 133, in _handle_image_request
+    handler(query)
+TypeError: 'str' object is not callable
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 59256)
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 683, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 360, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 49, in __init__
+    super().__init__(*args, **kwargs)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 747, in __init__
+    self.handle()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 427, in handle
+    self.handle_one_request()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 415, in handle_one_request
+    method()
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 103, in do_GET
+    self._handle_image_request(self.path, True)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 133, in _handle_image_request
+    handler(query)
+TypeError: 'str' object is not callable
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 59258)
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 683, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 360, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 49, in __init__
+    super().__init__(*args, **kwargs)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 747, in __init__
+    self.handle()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 427, in handle
+    self.handle_one_request()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 415, in handle_one_request
+    method()
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 103, in do_GET
+    self._handle_image_request(self.path, True)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 133, in _handle_image_request
+    handler(query)
+TypeError: 'str' object is not callable
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 59260)
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 683, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 360, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 49, in __init__
+    super().__init__(*args, **kwargs)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 747, in __init__
+    self.handle()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 427, in handle
+    self.handle_one_request()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 415, in handle_one_request
+    method()
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 103, in do_GET
+    self._handle_image_request(self.path, True)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 133, in _handle_image_request
+    handler(query)
+TypeError: 'str' object is not callable
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 59262)
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 683, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 360, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 49, in __init__
+    super().__init__(*args, **kwargs)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 747, in __init__
+    self.handle()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 427, in handle
+    self.handle_one_request()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 415, in handle_one_request
+    method()
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 103, in do_GET
+    self._handle_image_request(self.path, True)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 133, in _handle_image_request
+    handler(query)
+TypeError: 'str' object is not callable
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 59264)
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 683, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 360, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 49, in __init__
+    super().__init__(*args, **kwargs)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 747, in __init__
+    self.handle()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 427, in handle
+    self.handle_one_request()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 415, in handle_one_request
+    method()
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 103, in do_GET
+    self._handle_image_request(self.path, True)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 133, in _handle_image_request
+    handler(query)
+TypeError: 'str' object is not callable
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 59266)
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 683, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 360, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 49, in __init__
+    super().__init__(*args, **kwargs)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 747, in __init__
+    self.handle()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 427, in handle
+    self.handle_one_request()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 415, in handle_one_request
+    method()
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 103, in do_GET
+    self._handle_image_request(self.path, True)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 133, in _handle_image_request
+    handler(query)
+TypeError: 'str' object is not callable
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 59271)
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 683, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 360, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 49, in __init__
+    super().__init__(*args, **kwargs)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 747, in __init__
+    self.handle()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 427, in handle
+    self.handle_one_request()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 415, in handle_one_request
+    method()
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 103, in do_GET
+    self._handle_image_request(self.path, True)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 133, in _handle_image_request
+    handler(query)
+TypeError: 'str' object is not callable
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 59273)
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 683, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 360, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 49, in __init__
+    super().__init__(*args, **kwargs)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 747, in __init__
+    self.handle()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 427, in handle
+    self.handle_one_request()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 415, in handle_one_request
+    method()
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 103, in do_GET
+    self._handle_image_request(self.path, True)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 133, in _handle_image_request
+    handler(query)
+TypeError: 'str' object is not callable
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 59275)
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 683, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 360, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 49, in __init__
+    super().__init__(*args, **kwargs)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 747, in __init__
+    self.handle()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 427, in handle
+    self.handle_one_request()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 415, in handle_one_request
+    method()
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 103, in do_GET
+    self._handle_image_request(self.path, True)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 133, in _handle_image_request
+    handler(query)
+TypeError: 'str' object is not callable
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 59280)
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 683, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 360, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 49, in __init__
+    super().__init__(*args, **kwargs)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 747, in __init__
+    self.handle()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 427, in handle
+    self.handle_one_request()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 415, in handle_one_request
+    method()
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 103, in do_GET
+    self._handle_image_request(self.path, True)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 133, in _handle_image_request
+    handler(query)
+TypeError: 'str' object is not callable
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 59282)
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 683, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 360, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 49, in __init__
+    super().__init__(*args, **kwargs)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 747, in __init__
+    self.handle()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 427, in handle
+    self.handle_one_request()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 415, in handle_one_request
+    method()
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 103, in do_GET
+    self._handle_image_request(self.path, True)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 133, in _handle_image_request
+    handler(query)
+TypeError: 'str' object is not callable
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 59284)
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 683, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 360, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 49, in __init__
+    super().__init__(*args, **kwargs)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 747, in __init__
+    self.handle()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 427, in handle
+    self.handle_one_request()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 415, in handle_one_request
+    method()
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 103, in do_GET
+    self._handle_image_request(self.path, True)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 133, in _handle_image_request
+    handler(query)
+TypeError: 'str' object is not callable
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 59292)
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 683, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 360, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 49, in __init__
+    super().__init__(*args, **kwargs)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 747, in __init__
+    self.handle()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 427, in handle
+    self.handle_one_request()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 415, in handle_one_request
+    method()
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 103, in do_GET
+    self._handle_image_request(self.path, True)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 133, in _handle_image_request
+    handler(query)
+TypeError: 'str' object is not callable
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 59294)
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 683, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 360, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 49, in __init__
+    super().__init__(*args, **kwargs)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 747, in __init__
+    self.handle()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 427, in handle
+    self.handle_one_request()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 415, in handle_one_request
+    method()
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 103, in do_GET
+    self._handle_image_request(self.path, True)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 133, in _handle_image_request
+    handler(query)
+TypeError: 'str' object is not callable
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 59296)
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 683, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 360, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 49, in __init__
+    super().__init__(*args, **kwargs)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 747, in __init__
+    self.handle()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 427, in handle
+    self.handle_one_request()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 415, in handle_one_request
+    method()
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 103, in do_GET
+    self._handle_image_request(self.path, True)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 133, in _handle_image_request
+    handler(query)
+TypeError: 'str' object is not callable
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 59307)
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 683, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 360, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 49, in __init__
+    super().__init__(*args, **kwargs)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 747, in __init__
+    self.handle()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 427, in handle
+    self.handle_one_request()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 415, in handle_one_request
+    method()
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 103, in do_GET
+    self._handle_image_request(self.path, True)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 133, in _handle_image_request
+    handler(query)
+TypeError: 'str' object is not callable
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 59309)
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 683, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 360, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 49, in __init__
+    super().__init__(*args, **kwargs)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 747, in __init__
+    self.handle()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 427, in handle
+    self.handle_one_request()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 415, in handle_one_request
+    method()
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 103, in do_GET
+    self._handle_image_request(self.path, True)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 133, in _handle_image_request
+    handler(query)
+TypeError: 'str' object is not callable
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 59312)
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 683, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 360, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 49, in __init__
+    super().__init__(*args, **kwargs)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 747, in __init__
+    self.handle()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 427, in handle
+    self.handle_one_request()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 415, in handle_one_request
+    method()
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 103, in do_GET
+    self._handle_image_request(self.path, True)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 133, in _handle_image_request
+    handler(query)
+TypeError: 'str' object is not callable
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 59327)
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 683, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 360, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 49, in __init__
+    super().__init__(*args, **kwargs)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 747, in __init__
+    self.handle()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 427, in handle
+    self.handle_one_request()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 415, in handle_one_request
+    method()
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 103, in do_GET
+    self._handle_image_request(self.path, True)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 133, in _handle_image_request
+    handler(query)
+TypeError: 'str' object is not callable
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 59336)
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 683, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 360, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 49, in __init__
+    super().__init__(*args, **kwargs)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 747, in __init__
+    self.handle()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 427, in handle
+    self.handle_one_request()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 415, in handle_one_request
+    method()
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 103, in do_GET
+    self._handle_image_request(self.path, True)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 133, in _handle_image_request
+    handler(query)
+TypeError: 'str' object is not callable
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 59338)
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 683, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 360, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 49, in __init__
+    super().__init__(*args, **kwargs)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 747, in __init__
+    self.handle()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 427, in handle
+    self.handle_one_request()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 415, in handle_one_request
+    method()
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 103, in do_GET
+    self._handle_image_request(self.path, True)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 133, in _handle_image_request
+    handler(query)
+TypeError: 'str' object is not callable
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 59340)
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 683, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 360, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 49, in __init__
+    super().__init__(*args, **kwargs)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 747, in __init__
+    self.handle()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 427, in handle
+    self.handle_one_request()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 415, in handle_one_request
+    method()
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 103, in do_GET
+    self._handle_image_request(self.path, True)
+  File "/Users/apple/Desktop/Qorder/.bin/src/handler.py", line 133, in _handle_image_request
+    handler(query)
+TypeError: 'str' object is not callable
+----------------------------------------
+2026-07-29 11:49:47 [INFO] main: 数据库初始化完成
+2026-07-29 11:49:47 [INFO] main: 数据库初始化完成
+2026-07-29 11:49:47 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-29 11:49:47 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-29 12:20:47 [INFO] main: 数据库初始化完成
+2026-07-29 12:20:47 [INFO] main: 数据库初始化完成
+2026-07-29 12:20:47 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-29 12:20:47 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-29 12:39:56 [INFO] main: 数据库初始化完成
+2026-07-29 12:39:56 [INFO] main: 数据库初始化完成
+2026-07-29 12:39:56 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-29 12:39:56 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-29 12:40:38 [INFO] main: 数据库初始化完成
+2026-07-29 12:40:38 [INFO] main: 数据库初始化完成
+2026-07-29 12:40:38 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-29 12:40:38 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-29 12:54:59 [INFO] main: 数据库初始化完成
+2026-07-29 12:54:59 [INFO] main: 数据库初始化完成
+2026-07-29 12:54:59 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-29 12:54:59 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-29 13:50:26 [INFO] main: 数据库初始化完成
+2026-07-29 13:50:26 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-29 13:59:57 [INFO] main: 数据库初始化完成
+2026-07-29 13:59:57 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-29 15:02:08 [INFO] main: 数据库初始化完成
+2026-07-29 15:02:08 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-29 17:00:07 [INFO] main: 数据库初始化完成
+2026-07-29 17:00:07 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-29 17:43:58 [INFO] main: 数据库初始化完成
+2026-07-29 17:43:58 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-29 21:27:02 [INFO] main: 数据库初始化完成
+2026-07-29 21:27:37 [INFO] main: 数据库初始化完成
+2026-07-29 21:27:37 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-29 21:28:35 [INFO] main: 数据库初始化完成
+2026-07-29 21:28:35 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-29 22:33:46 [INFO] main: 数据库初始化完成
+2026-07-29 22:33:57 [INFO] main: 数据库初始化完成
+2026-07-29 22:33:57 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-29 22:41:32 [INFO] main: 数据库初始化完成
+2026-07-29 22:41:32 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-29 22:41:39 [INFO] main: 数据库初始化完成
+2026-07-29 22:41:39 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-29 22:41:47 [INFO] main: 数据库初始化完成
+2026-07-29 22:41:47 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-29 22:41:56 [INFO] main: 数据库初始化完成
+2026-07-29 22:41:56 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-29 22:42:01 [INFO] main: 数据库初始化完成
+2026-07-29 22:42:01 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-29 22:46:09 [INFO] main: 数据库初始化完成
+2026-07-29 22:46:09 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-29 23:00:38 [INFO] main: 数据库初始化完成
+2026-07-29 23:08:04 [INFO] main: 数据库初始化完成
+2026-07-29 23:08:04 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-29 23:53:23 [INFO] main: 数据库初始化完成
+2026-07-29 23:53:23 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-30 00:20:41 [INFO] main: 数据库初始化完成
+2026-07-30 00:20:41 [INFO] main: 服务已启动: http://localhost:8089

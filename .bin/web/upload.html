@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>上传照片 - 无联网相册</title>
+    <script src="config.js"></script>
+    <script src="modules/constants.js"></script>
+    <script src="modules/utils.js"></script>
+    <script src="modules/use-password.js"></script>
+    <script src="exifr.js"></script>
+    <script src="media-processor.js"></script>
+    <link rel="stylesheet" href="upload.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header-bar">
+            <a href="/" class="back-link">← 返回相册</a>
+            <h1>上传照片</h1>
+            <div class="version-check-area">
+                <button id="checkUpdateBtn" class="check-update-btn" title="检查更新">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 12a9 9 0 1 1-9-9c2.5 0 4.8 1 6.5 2.6"/>
+                        <polyline points="21 4 21 10 15 10"/>
+                    </svg>
+                    检查更新
+                </button>
+            </div>
+        </div>
+
+        <div class="license-status-area" id="licenseStatusArea" style="display:none;">
+            <div class="license-status-info">
+                <span class="license-label">授权状态：</span>
+                <span class="license-value" id="licenseValue"></span>
+            </div>
+            <button id="licenseActionBtn" class="license-action-btn">激活授权码</button>
+        </div>
+
+        <form id="uploadForm">
+            <div class="form-group">
+                <label>选择相册</label>
+                <div class="tag-input-inline">
+                    <div class="tag-chip-container" id="albumChipContainer" onclick="document.getElementById('albumInput').focus()">
+                        <div id="albumChipBadges" style="display:flex;flex-wrap:wrap;gap:4px;"></div>
+                        <input type="text" id="albumInput" placeholder="输入或选择相册名，从下拉选择或创建" autocomplete="off">
+                    </div>
+                    <div class="tag-dropdown-detail" id="albumDropdown"></div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>选择文件 <span id="fileCount" style="color:#999;font-weight:normal;"></span></label>
+                <div class="drop-zone" id="dropZone">
+                    <div class="drop-zone-icon">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                    </div>
+                    <div class="drop-zone-text">
+                        拖拽文件到此处，或 <strong>点击选择</strong>
+                    </div>
+                    <div style="color:#999;font-size:12px;margin-top:8px;">
+                        支持 JPG、PNG、GIF、WebP、HEIC、MP4 等格式
+                    </div>
+                </div>
+                <input type="file" id="fileInput" multiple accept="image/*,video/*" style="display:none">
+                <div class="file-list" id="fileList"></div>
+            </div>
+
+            <button type="submit" class="submit-btn" id="submitBtn" disabled>
+                开始上传
+            </button>
+
+            <div class="progress-container" id="progressContainer">
+                <div class="progress-text">
+                    <span id="progressStage">准备上传...</span>
+                    <span id="progressPercent">0%</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <div class="progress-file" id="progressFile" style="display:none;">
+                    <div class="progress-file-fill" id="progressFileFill"></div>
+                </div>
+                <div class="progress-stage" id="progressDetail"></div>
+            </div>
+        </form>
+
+        <h2 class="section-title">本地离线相册 · 说明</h2>
+        <div class="feature-grid">
+            <div class="feature-card">
+                <h3>开箱即用</h3>
+                <p>源码下载即可启动，无需安装额外软件、配置运行环境</p>
+            </div>
+            <div class="feature-card">
+                <h3>安全无忧</h3>
+                <p>照片、项目源码仅存放本地，全程无需联网，数据自主掌控</p>
+            </div>
+            <div class="feature-card">
+                <h3>原图无损保存</h3>
+                <p>图片无任何压缩处理，完整保留原图画质、EXIF拍摄信息与全部元数据。</p>
+            </div>
+            <div class="feature-card">
+                <h3>精准识别拍摄日期</h3>
+                <p>自动读取手机原图拍摄日期，对照片自动分组归类到对应年份。</p>
+            </div>
+            <div class="feature-card">
+                <h3>极致性能</h3>
+                <p>存储，查看几万张照片不卡顿</p>
+            </div>
+            <div class="feature-card">
+                <h3>相册分组管理</h3>
+                <p>自定义相册，支持重命名相册、筛选排序折叠照片，清空相册图片即可自动删除相册。</p>
+            </div>
+        </div>
+
+        <h2 class="section-title">相册根目录</h2>
+        <div class="tree-wrap">
+            <div class="tree-text">
+                <div>相册根目录 <span class="tip-green">(备份请完整复制整个文件夹，勿单独拷贝data)</span></div>
+                <div class="tree-row"><span class="tree-sym">├──</span><span class="tree-name gray">.bin</span><span class="tree-desc gray">项目源码文件夹（默认隐藏）</span></div>
+                <div class="tree-row"><span class="tree-sym">├──</span><span class="tree-name gray">.user_data</span><span class="tree-desc gray">系统数据文件夹（缩略图与数据库，默认隐藏）</span></div>
+                <div class="tree-row"><span class="tree-sym">├──</span><span class="tree-name gray">version.json</span><span class="tree-desc gray">版本更新说明（默认隐藏）</span></div>
+                <div class="tree-row"><span class="tree-sym">├──</span><span class="tree-name">data</span><span class="tree-desc">照片存储目录（可查看，<span class="warn-red">禁止手动修改</span>，所有修改请在网站内操作）</span></div>
+                <div class="tree-row"><span class="tree-sym">├──</span><span class="tree-name">双击启动_windows.vbs</span><span class="tree-desc">Win启动文件</span></div>
+                <div class="tree-row"><span class="tree-sym">└──</span><span class="tree-name">双击启动_mac.command</span><span class="tree-desc">Mac启动文件</span></div>
+            </div>
+        </div>
+
+        <div class="footer-contact">网站相关问题及建议，欢迎联系：976279080@qq.com</div>
+    </div>
+    
+    <script src="upload.js"></script>
+</body>
+</html>

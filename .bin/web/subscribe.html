@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>订阅授权码 - 无联网相册</title>
+    <link rel="stylesheet" href="subscribe.css">
+</head>
+<body>
+    <div class="container">
+        <a href="/" class="back-link" id="backLink">← 返回</a>
+        <h1>订阅授权码</h1>
+        <p class="subtitle">照片查看功能永久免费，照片编辑功能限时免费</p>
+
+        <div class="plans-grid">
+            <!-- 月卡 -->
+            <div class="plan-card">
+                <div class="plan-name">月卡</div>
+                <div class="plan-price">¥9</div>
+                <div class="plan-duration">有效期 30 天</div>
+                <ul class="plan-features">
+                    <li>无限上传照片</li>
+                    <li>编辑照片信息</li>
+                    <li>管理标签</li>
+                    <li>批量操作</li>
+                </ul>
+                <button type="button" class="plan-btn">选择月卡</button>
+            </div>
+
+            <!-- 年卡（推荐） -->
+            <div class="plan-card plan-card-featured">
+                <div class="plan-badge">推荐</div>
+                <div class="plan-name">年卡</div>
+                <div class="plan-price">¥29</div>
+                <div class="plan-duration">有效期 365 天</div>
+                <ul class="plan-features">
+                    <li>月卡全部权益</li>
+                    <li>优先技术支持</li>
+                    <li>专属功能提前体验</li>
+                </ul>
+                <button type="button" class="plan-btn">选择年卡</button>
+            </div>
+
+            <!-- 永久卡 -->
+            <div class="plan-card">
+                <div class="plan-name">永久卡</div>
+                <div class="plan-price">¥59</div>
+                <div class="plan-duration">永久有效</div>
+                <ul class="plan-features">
+                    <li>年卡全部权益</li>
+                    <li>终身免费更新</li>
+                    <li>数据迁移协助</li>
+                </ul>
+                <button type="button" class="plan-btn">选择永久卡</button>
+            </div>
+        </div>
+
+        <h2 class="section-title">如何购买</h2>
+        <p class="purchase-desc">使用微信扫描添加作者好友，完成支付后，即可获取对应授权码</p>
+        <div class="qrcode-area">
+            <img src="/images/wechat_qrcode.png" alt="作者微信" class="qrcode-img" onerror="this.style.display='none';document.getElementById('qrcode-fallback').style.display='flex';">
+            <div id="qrcode-fallback" class="qrcode-placeholder" style="display:none;">
+                <div style="font-size:48px;margin-bottom:8px;">📱</div>
+                <div>请将微信二维码图片保存为</div>
+                <div style="font-family:monospace;color:#999;margin-top:4px;">web/images/wechat_qrcode.png</div>
+            </div>
+            <div class="author-info">
+                <div class="author-name">作者：传输</div>
+                <div class="author-tip">添加好友请备注「相册查看器 订阅」</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="subscribe.js"></script>
+</body>
+</html>
