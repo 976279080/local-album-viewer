@@ -35,7 +35,7 @@ SERVER_PORT = 8089
 
 # 访问密码（用于修改类操作的鉴权）
 # 修改后需重启服务生效
-PASSWORD = '123456'
+PASSWORD = '111222'
 
 
 def init_dirs():
@@ -45,8 +45,8 @@ def init_dirs():
 
 
 # 版本检查配置
-APP_VERSION = '0.0.1'  # 本地版本号
-GITEE_RAW_BASE = 'https://gitee.com/username/repo_name/raw/master'  # 码云 raw 地址（用户后续修改）
+APP_VERSION = '0.0.2'  # 本地版本号
+GITEE_RAW_BASE = 'https://gitee.com/cdgm/local-album-viewer/raw/main'  # 码云 raw 地址
 VERSION_JSON_PATH = 'version.json'  # version.json 相对路径
 VERSION_CHECK_TIMEOUT = 5  # 版本检查超时时间（秒）
 
