@@ -814,18 +814,18 @@
             }
 
             if (!payload.success) {
-                // 已经有待处理更新 → 直接提示重启，不是错误
+                // 已经有待处理更新 → 直接倒计时重启
                 if (payload.restart_required) {
-                    showDownloadSuccessModal(payload.message || '已有待应用的更新包，请重启程序完成更新');
+                    showRestartCountdownModal(payload.message || '已有待应用的更新包，即将自动重启');
                 } else {
                     showToast(payload.message || '更新失败', 'error');
                 }
                 return;
             }
 
-            // 成功：提示重启
-            showDownloadSuccessModal(
-                payload.message || '更新包已准备完成，请关闭浏览器并重新双击启动脚本以应用更新'
+            // 成功：倒计时自动重启
+            showRestartCountdownModal(
+                payload.message || '更新包已准备完成，即将自动重启'
             );
         } catch (e) {
             showToast('更新失败：' + (e && e.message ? e.message : '网络错误'), 'error');
@@ -836,15 +836,16 @@
     }
 
     /**
-     * 成功准备更新后的强提示弹窗（不再用 toast，避免用户没看见）
+     * 倒计时自动重启弹窗
      */
-    function showDownloadSuccessModal(message) {
+    function showRestartCountdownModal(message) {
         var vmodal = document.getElementById('versionModal');
         if (vmodal) vmodal.remove();
 
         var m = document.createElement('div');
         m.className = 'version-modal';
         m.innerHTML =
+            '<style>@keyframes spin{to{transform:rotate(360deg)}}</style>' +
             '<div class="version-modal-mask"></div>' +
             '<div class="version-modal-content" style="max-width:420px;">' +
                 '<div class="version-modal-header">' +
@@ -852,25 +853,34 @@
                 '</div>' +
                 '<div style="padding:8px 4px 20px;line-height:1.8;font-size:14px;color:#334155;">' +
                     message +
-                    '<br/><br/>' +
-                    '<div style="background:#eff6ff;padding:12px 14px;border-radius:8px;border:1px solid #dbeafe;color:#1e40af;">' +
-                        '<strong>操作步骤：</strong><br/>' +
-                        '① 关闭当前页面<br/>' +
-                        '② 双击启动脚本（mac.command 或 windows.vbs）<br/>' +
-                        '③ 程序会自动替换新版本并打开' +
+                    '<div style="margin-top:16px;text-align:center;">' +
+                        '<span id="restartCountdown" style="font-size:32px;font-weight:700;color:#667eea;">3</span>' +
+                        '<span style="font-size:14px;color:#64748b;margin-left:4px;">秒后自动重启</span>' +
                     '</div>' +
-                    '<div style="margin-top:12px;font-size:12px;color:#64748b;">' +
-                        '※ 旧版本会备份到 .bin_backup 目录，如更新失败可手动改回' +
-                    '</div>' +
-                '</div>' +
-                '<div style="display:flex;justify-content:flex-end;">' +
-                    '<button class="version-update-btn" id="okRestartBtn" style="background:#10b981;border:none;padding:10px 20px;border-radius:8px;color:white;cursor:pointer;font-size:14px;">我知道了</button>' +
                 '</div>' +
             '</div>';
 
         document.body.appendChild(m);
-        m.querySelector('.version-modal-mask').onclick = function() { m.remove(); };
-        m.querySelector('#okRestartBtn').onclick = function() { m.remove(); };
+
+        // 倒计时
+        var count = 3;
+        var countEl = m.querySelector('#restartCountdown');
+        var timer = setInterval(function() {
+            count--;
+            if (count > 0) {
+                countEl.textContent = count;
+            } else {
+                clearInterval(timer);
+                countEl.textContent = '0';
+                m.querySelector('.version-modal-content').innerHTML =
+                    '<div style="padding:40px 20px;text-align:center;">' +
+                        '<div style="font-size:16px;color:#334155;margin-bottom:16px;">正在重启，请稍候...</div>' +
+                        '<div style="display:inline-block;width:32px;height:32px;border:3px solid #e2e8f0;border-top-color:#667eea;border-radius:50%;animation:spin 0.8s linear infinite;"></div>' +
+                    '</div>';
+                // 触发重启
+                fetch('/api/version/restart', { method: 'POST' }).catch(function() {});
+            }
+        }, 1000);
     }
 
     // ============ 授权状态管理 ============

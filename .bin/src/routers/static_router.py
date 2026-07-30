@@ -63,6 +63,7 @@ class StaticRouterMixin:
             '/api/license/config': 'handle_set_license_config',
             '/api/verify': 'handle_verify',
             '/api/version/download': 'handle_version_download',
+            '/api/version/restart': 'handle_version_restart',
         },
         'DELETE': {}
     }

@@ -264,35 +264,12 @@ class VersionService:
                 shutil.rmtree(update_dir, ignore_errors=True)
             shutil.copytree(new_bin_dir, update_dir, symlinks=False)
 
-            # 更新本地 version.json latest_version
-            if target_version:
-                try:
-                    if local_version_file.exists():
-                        data = json.loads(local_version_file.read_text(encoding='utf-8'))
-                    else:
-                        data = {'latest_version': '', 'versions': []}
-                    data['latest_version'] = target_version
-                    existing = any(str(v.get('version', '')).strip() == target_version for v in data.get('versions', []))
-                    if not existing:
-                        vers = list(data.get('versions', []))
-                        vers.insert(0, {
-                            'version': target_version,
-                            'date': self._now_str()[:10],
-                            'changelog': '',
-                            'download_url': download_url,
-                        })
-                        data['versions'] = vers
-                    local_version_file.write_text(
-                        json.dumps(data, ensure_ascii=False, indent=2),
-                        encoding='utf-8',
-                    )
-                except Exception:
-                    pass
-
+            # 版本号不在这里写入——等 restart.py 替换 .bin 成功后再写
             marker_info = {
                 'version': target_version,
                 'prepared_at': self._now_str(),
                 'backup_dir': str(backup_dir),
+                'download_url': download_url,
             }
             pending_marker.write_text(
                 json.dumps(marker_info, ensure_ascii=False, indent=2),
@@ -301,7 +278,7 @@ class VersionService:
 
             return {
                 'success': True,
-                'message': '更新包已准备完成，请关闭浏览器并重新双击启动脚本以应用更新',
+                'message': '更新包已准备完成，即将自动重启',
                 'restart_required': True,
                 'backup_dir': str(backup_dir),
             }

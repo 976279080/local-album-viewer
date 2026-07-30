@@ -8,7 +8,9 @@
 import os
 import sys
 import time
+import json
 import socket
+import shutil
 import subprocess
 import webbrowser
 from pathlib import Path
@@ -77,6 +79,99 @@ def open_browser(url):
         webbrowser.open(url)
 
 
+def try_apply_pending_update() -> bool:
+    """如果存在待应用更新（.pending_update + .bin_update），则应用更新：
+    1. 把 .bin → .bin_backup（备份旧版本）
+    2. 把 .bin_update → .bin（应用新版本）
+    3. 应用成功后删除 .bin_backup 和标记文件
+    4. 失败时从 .bin_backup 回滚
+    返回：有更新被应用时返回 True，供调用方决定是否需要二次重启
+    """
+    # launcher.py 在 <project_root>/.bin/src/launcher.py → project_root 是 Qorder/
+    script_dir = Path(__file__).resolve().parent
+    if script_dir.name == 'src':
+        project_root = script_dir.parent.parent  # 项目根（Qorder/）
+        current_bin = script_dir.parent     # .bin/
+    else:
+        # 防御路径：script_dir/.bin/ （若异常
+        project_root = script_dir.parent
+        current_bin = script_dir
+    pending_marker = project_root / '.pending_update'
+    update_dir = project_root / '.bin_update'
+    backup_dir = project_root / '.bin_backup'
+
+    # 没有待应用更新，直接返回
+    if not pending_marker.exists() or not update_dir.is_dir():
+        # 即便没有更新，也清理一下可能残留的旧备份（磁盘空间）
+        if backup_dir.is_dir():
+            shutil.rmtree(backup_dir, ignore_errors=True)
+        return False
+
+    # 读取标记（用于日志，失败不阻塞）
+    try:
+        marker_info = json.loads(pending_marker.read_text(encoding='utf-8')) if pending_marker.exists() else {}
+    except Exception:
+        marker_info = {}
+
+    print(f"检测到待应用更新：{marker_info.get('version', '新版本')}")
+
+    # 1. 清理旧备份（若存在）→ 2. 当前 .bin 备份为 .bin_backup
+    try:
+        if backup_dir.is_dir():
+            shutil.rmtree(backup_dir, ignore_errors=True)
+        shutil.copytree(current_bin, backup_dir, symlinks=False)
+    except (OSError, shutil.Error) as e:
+        print(f"更新失败（备份步骤）：{e}")
+        # 备份失败不要阻塞启动，继续正常启动旧版本
+        return False
+
+    rollback_needed = True  # 默认需要回滚，只有全部成功后置 False
+    try:
+        # 2. 用 .bin_update 覆盖 .bin
+        # 为了保证 launcher.py 也能被替换，先把 update_dir 内容复制到临时目录，再原子切换
+        tmp_swap = project_root / f'.bin_swap_{os.getpid()}_{int(time.time())}'
+        if tmp_swap.exists():
+            shutil.rmtree(tmp_swap, ignore_errors=True)
+        shutil.copytree(update_dir, tmp_swap, symlinks=False)
+
+        # 删除旧的 .bin，把 tmp_swap 重命名为 .bin
+        shutil.rmtree(current_bin, ignore_errors=True)
+        os.rename(str(tmp_swap), str(current_bin))
+
+        # 3. 应用成功，清理备份和更新包
+        rollback_needed = False
+        if backup_dir.is_dir():
+            shutil.rmtree(backup_dir, ignore_errors=True)
+        if update_dir.is_dir():
+            shutil.rmtree(update_dir, ignore_errors=True)
+        try:
+            pending_marker.unlink()
+        except OSError:
+            pass
+
+        print(f"更新已成功应用（版本 {marker_info.get('version', '新版本')}）")
+        return True
+
+    except (OSError, shutil.Error) as e:
+        print(f"应用更新失败：{e}")
+        # 回滚：.bin_backup → .bin
+        try:
+            if backup_dir.is_dir():
+                if current_bin.exists():
+                    shutil.rmtree(current_bin, ignore_errors=True)
+                shutil.copytree(backup_dir, current_bin, symlinks=False)
+                print("已回滚到旧版本")
+        except Exception as rb_err:
+            print(f"回滚失败：{rb_err}")
+        return False
+    finally:
+        # 无论成功失败，保留备份文件夹直到下次启动前清理
+        # 只有明确更新成功后，rollback_needed=False 已在上面删除 backup
+        if rollback_needed:
+            # 备份保留（.bin_backup），供手动排查 / 手动回滚，下次启动会清理
+            pass
+
+
 def wait_for_server(timeout=MAX_WAIT):
     """等待服务就绪（每 0.05 秒轮询一次）"""
     start = time.time()
@@ -139,10 +234,17 @@ def find_python():
 
 def main():
     """主函数"""
+    # 第一步：如果有 pending_update，先应用更新（成功时 .bin_backup 会被清掉）
+    # 注意：此步骤执行时 launcher.py 还在内存中，即便 .bin/src/launcher.py 被替换也不影响当前进程
+    try:
+        try_apply_pending_update()
+    except Exception as e:
+        print(f"应用更新时发生异常（继续正常启动）：{e}")
+
     # 强制终止现有进程并清理端口
     print("检查并清理端口...")
     kill_port()
-    
+
     # 查找 Python
     python_path = find_python()
     if not python_path:
@@ -157,11 +259,11 @@ def main():
             print("  - 系统 Python: python3")
         input("按回车键退出...")
         sys.exit(1)
-    
+
     print(f"使用 Python: {python_path}")
-    
-    # 启动服务进程
-    main_py = Path(__file__).parent / 'main.py'
+
+    # 启动服务进程 — 更新应用完成后 .bin/src/main.py 已是新版本，直接启动即可
+    main_py = Path(__file__).resolve().parent / 'main.py'
     
     # 启动参数
     startupinfo = None

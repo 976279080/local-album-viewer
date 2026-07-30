@@ -2,11 +2,18 @@
 # -*- coding: utf-8 -*-
 """版本检查路由 Mixin"""
 
+import os
+import sys
+import shutil
+import subprocess
+import tempfile
+from pathlib import Path
+
 from services.version_service import VersionService
 
 
 class VersionRouterMixin:
-    """版本检查 API 路由：check, list, download"""
+    """版本检查 API 路由：check, list, download, restart"""
 
     def handle_version_list(self, query) -> None:
         """GET /api/version/list - 获取完整版本列表（无需认证）"""
@@ -54,3 +61,47 @@ class VersionRouterMixin:
                 self.send_json({'status': 'error', **result}, status=400)
         except Exception as e:
             self.send_error_json(f'准备更新失败: {str(e)}')
+
+    def handle_version_restart(self) -> None:
+        """POST /api/version/restart - 触发自动重启（无需认证）
+
+        将 restart.py 复制到临时目录并以 detached 进程启动，
+        然后返回成功响应。前端收到响应后显示重启中遮罩。
+        restart.py 负责：杀旧进程 → 应用更新 → 启动服务 → 打开浏览器。
+        """
+        try:
+            # 定位 restart.py
+            restart_src = Path(__file__).resolve().parent.parent / 'restart.py'
+            if not restart_src.exists():
+                self.send_error_json('重启脚本不存在')
+                return
+
+            # 复制到临时目录（避免 .bin 被替换时文件锁定）
+            tmp_script = Path(tempfile.gettempdir()) / 'album_restart.py'
+            shutil.copy2(str(restart_src), str(tmp_script))
+
+            # 通过环境变量传递项目根路径
+            project_root = Path(__file__).resolve().parent.parent.parent
+            env = os.environ.copy()
+            env['ALBUM_PROJECT_ROOT'] = str(project_root)
+
+            # 以 detached 进程启动
+            creationflags = 0
+            startupinfo = None
+            if sys.platform == 'win32':
+                startupinfo = subprocess.STARTUPINFO()
+                startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                creationflags = subprocess.CREATE_NO_WINDOW
+
+            subprocess.Popen(
+                [sys.executable, str(tmp_script)],
+                env=env,
+                startupinfo=startupinfo,
+                creationflags=creationflags,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+
+            self.send_json({'status': 'ok', 'message': '重启已触发'})
+        except Exception as e:
+            self.send_error_json(f'触发重启失败: {str(e)}')

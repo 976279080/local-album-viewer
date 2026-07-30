@@ -1,0 +1,74 @@
+version: '1.0'
+name: build-and-release
+displayName: 打包发布 .bin
+
+# 触发条件：推送 v 前缀的 tag（如 v0.0.4）
+triggers:
+  trigger: auto
+  push:
+    tags:
+      prefix:
+        - v
+
+stages:
+  - name: stage-package
+    displayName: 打包
+    strategy: naturally
+    trigger: auto
+    executor: []
+    steps:
+      - step: shell@python
+        name: package_bin
+        displayName: 打包 .bin 目录
+        pythonVersion: '3'
+        commands:
+          # 清理运行时产物（日志、Python 缓存、macOS 系统文件）
+          - find .bin -name "*.log" -delete
+          - find .bin -type d -name "__pycache__" -exec rm -rf {} +
+          - find .bin -name ".DS_Store" -delete
+          # 打包，zip 顶层为 .bin/
+          - rm -f .bin.zip
+          - zip -r .bin.zip .bin/ -x "*.DS_Store" -x "*.log" -x "*/__pycache__/*"
+          - ls -lh .bin.zip
+        artifacts:
+          - name: BIN_ZIP
+            path:
+              - .bin.zip
+
+  - name: stage-release
+    displayName: 发布 Release
+    strategy: naturally
+    trigger: auto
+    executor: []
+    steps:
+      - step: release@gitee
+        name: release_gitee
+        displayName: Gitee Release
+        # tagName 使用触发的 tag（如 v0.0.4），不存在会基于当前 commit 创建
+        tagName: ${GITEE_TAG}
+        releaseName: ${GITEE_TAG}
+        description: 自动发布
+        # 引用上一阶段的制品
+        upstreamArtifact:
+          - BIN_ZIP
+        # 上传为 Release 附件
+        assertFiles:
+          - .bin.zip
+        prerelease: false
+        # 允许同 tag 覆盖，便于发版失败重试
+        allowUpdate: true
+
+  - name: stage-update-version
+    displayName: 更新 version.json
+    strategy: naturally
+    trigger: auto
+    executor: []
+    steps:
+      - step: shell@python
+        name: update_version_json
+        displayName: 更新 version.json 并推送
+        pythonVersion: '3'
+        commands:
+          # 读取 GITEE_TAG，更新 version.json，并 push 回 main
+          # 需在流水线设置中配置 GITEE_TOKEN 环境变量（Personal Access Token，projects 权限）
+          - python .workflow/update_version.py
