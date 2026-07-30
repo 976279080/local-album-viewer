@@ -4,7 +4,6 @@ displayName: 打包发布 .bin
 
 # 触发条件：推送 v 前缀的 tag（如 v0.0.4）
 triggers:
-  trigger: auto
   push:
     tags:
       prefix:
