@@ -1,5 +1,5 @@
 ' Local Album Viewer - Windows Launcher
-' Auto-restart service, apply pending updates, then open browser
+' Auto-restart service, then open browser (fast path: no update check)
 
 Dim objShell, objFSO, objWMI, strBasePath, strPythonPath, strMainPath
 Dim strCmd, intReturn, i, bReady
@@ -10,74 +10,7 @@ Set objFSO = CreateObject("Scripting.FileSystemObject")
 ' Get script directory
 strBasePath = objFSO.GetParentFolderName(WScript.ScriptFullName)
 
-' ============================================================
-' Apply pending update (.bin_update -> .bin) if exists
-' ============================================================
-Dim strPendingMarker, strBinDir, strBinUpdateDir, strBinBackupDir
-strPendingMarker = strBasePath & "\.pending_update"
-strBinDir        = strBasePath & "\.bin"
-strBinUpdateDir  = strBasePath & "\.bin_update"
-strBinBackupDir  = strBasePath & "\.bin_backup"
-
-If objFSO.FileExists(strPendingMarker) And objFSO.FolderExists(strBinUpdateDir) Then
-    On Error Resume Next
-    ' Kill old process first
-    Set objWMI = GetObject("winmgmts:\\.\root\cimv2")
-    Dim colP, objP
-    Set colP = objWMI.ExecQuery _
-        ("SELECT * FROM Win32_Process WHERE CommandLine LIKE '%main.py%'")
-    For Each objP In colP
-        objP.Terminate
-    Next
-    WScript.Sleep 500
-    On Error GoTo 0
-
-    On Error Resume Next
-    ' 1) Remove old backup
-    If objFSO.FolderExists(strBinBackupDir) Then
-        objFSO.DeleteFolder strBinBackupDir, True
-    End If
-    If Err.Number <> 0 Then Err.Clear
-
-    ' 2) Backup current .bin
-    Dim bBackupOK
-    bBackupOK = False
-    If objFSO.FolderExists(strBinDir) Then
-        objFSO.MoveFolder strBinDir, strBinBackupDir
-        If Err.Number = 0 Then
-            bBackupOK = True
-        Else
-            Err.Clear
-        End If
-    Else
-        bBackupOK = True
-    End If
-
-    ' 3) Move new version into place
-    If bBackupOK Then
-        objFSO.MoveFolder strBinUpdateDir, strBinDir
-        If Err.Number = 0 Then
-            ' Success, remove marker
-            objFSO.DeleteFile strPendingMarker, True
-        Else
-            ' Failed, rollback
-            Err.Clear
-            If objFSO.FolderExists(strBinUpdateDir) Then
-                On Error Resume Next
-                objFSO.DeleteFolder strBinUpdateDir, True
-                On Error GoTo 0
-            End If
-            If objFSO.FolderExists(strBinBackupDir) Then
-                On Error Resume Next
-                objFSO.MoveFolder strBinBackupDir, strBinDir
-                On Error GoTo 0
-            End If
-        End If
-    End If
-    On Error GoTo 0
-End If
-
-' main.py path (check after update applied)
+' main.py path
 strMainPath = strBasePath & "\.bin\src\main.py"
 
 ' Check if main.py exists

@@ -54,3 +54,14 @@ class VersionRouterMixin:
                 self.send_json({'status': 'error', **result}, status=400)
         except Exception as e:
             self.send_error_json(f'准备更新失败: {str(e)}')
+
+    def handle_version_restart(self) -> None:
+        """POST /api/version/restart - 触发自动重启并应用更新（无需密码认证）"""
+        try:
+            ok, msg = VersionService.trigger_restart_and_apply_update()
+            if ok:
+                self.send_json({'status': 'ok', 'message': msg})
+            else:
+                self.send_json({'status': 'error', 'message': msg}, status=400)
+        except Exception as e:
+            self.send_error_json(f'重启失败: {str(e)}')

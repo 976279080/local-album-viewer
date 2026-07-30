@@ -15,7 +15,10 @@
 import json
 import os
 import shutil
+import sys
+import time
 import tempfile
+import subprocess
 import urllib.request
 import urllib.error
 import zipfile
@@ -183,6 +186,14 @@ class VersionService:
                 return 1
         return 0
 
+    @staticmethod
+    def _is_valid_update_dir(update_dir: Path) -> bool:
+        """判断 .bin_update 是否是有效的更新包（包含 .bin/src/main.py）。"""
+        try:
+            return (update_dir / 'src' / 'main.py').is_file()
+        except Exception:
+            return False
+
     def download_update(self, download_url: str, target_version: str = '') -> dict:
         """
         下载更新包并准备下次启动时替换
@@ -191,8 +202,12 @@ class VersionService:
           1. 下载 zip → 临时目录（URL 为空则按规则基于 target_version 构造）
           2. 解压 → 查找里面的 .bin/ 目录
           3. 将 .bin/ 复制到项目根的 .bin_update/
-          4. 写入 .pending_update 标记，更新本地 version.json
+          4. 写入 .pending_update 标记（version.json 延后到 restarter 成功替换 .bin 后再写）
           5. 清理临时文件
+
+        兼容二次更新：
+          - 若 .pending_update/.bin_update 已存在且版本相同，则直接复用（避免用户看到"下载中"一闪而过）
+          - 若版本不同或包损坏，则先清空旧残留再重新下载
         """
         project_root = BASE_DIR.parent
         update_dir = project_root / '.bin_update'
@@ -205,12 +220,61 @@ class VersionService:
         if not download_url or not download_url.startswith(('http://', 'https://')):
             return {'success': False, 'message': '下载地址无效，请检查 version.json 中的 download_url 字段', 'restart_required': False}
 
-        if pending_marker.exists() and update_dir.is_dir():
-            return {
-                'success': False,
-                'message': '已有待应用的更新包，请先重启程序以完成更新',
-                'restart_required': True,
-            }
+        # ========== 二次更新 / 残留包处理 ==========
+        has_marker = pending_marker.is_file()
+        has_update = update_dir.is_dir() and self._is_valid_update_dir(update_dir)
+
+        if has_marker and has_update:
+            # 读取 marker 看看是什么版本
+            existing_version = ''
+            same_version = False
+            try:
+                info = json.loads(pending_marker.read_text(encoding='utf-8'))
+                existing_version = str(info.get('version', '') or '').strip()
+                same_version = bool(target_version) and (existing_version == str(target_version).strip())
+            except Exception:
+                same_version = False
+
+            if same_version:
+                # 版本完全一致：直接复用已有更新包，不再重新下载
+                # 这样用户二次点击不会看到"下载中..."一闪而过，而是直接进入"已就绪"状态
+                return {
+                    'success': True,
+                    'message': f'已下载并准备好 v{target_version}，即将自动重启...',
+                    'restart_required': True,
+                    'reused_download': True,
+                    'backup_dir': str(backup_dir),
+                }
+            else:
+                # 版本不同或 marker 损坏：清空旧残留，然后正常重新下载
+                try:
+                    if pending_marker.exists():
+                        pending_marker.unlink()
+                    if update_dir.exists():
+                        shutil.rmtree(update_dir, ignore_errors=True)
+                    if backup_dir.exists():
+                        shutil.rmtree(backup_dir, ignore_errors=True)
+                except Exception:
+                    pass
+
+        elif has_marker and not has_update:
+            # marker 还在，但 .bin_update 丢了或损坏 → 清掉残余
+            try:
+                pending_marker.unlink(missing_ok=True)
+            except Exception:
+                pass
+            if update_dir.exists():
+                try:
+                    shutil.rmtree(update_dir, ignore_errors=True)
+                except Exception:
+                    pass
+        else:
+            # 其他状态有脏的目录也先清一下，避免后续 copytree 失败
+            if update_dir.exists():
+                try:
+                    shutil.rmtree(update_dir, ignore_errors=True)
+                except Exception:
+                    pass
 
         try:
             tmp_dir = Path(tempfile.mkdtemp(prefix='album_update_'))
@@ -264,33 +328,12 @@ class VersionService:
                 shutil.rmtree(update_dir, ignore_errors=True)
             shutil.copytree(new_bin_dir, update_dir, symlinks=False)
 
-            # 更新本地 version.json latest_version
-            if target_version:
-                try:
-                    if local_version_file.exists():
-                        data = json.loads(local_version_file.read_text(encoding='utf-8'))
-                    else:
-                        data = {'latest_version': '', 'versions': []}
-                    data['latest_version'] = target_version
-                    existing = any(str(v.get('version', '')).strip() == target_version for v in data.get('versions', []))
-                    if not existing:
-                        vers = list(data.get('versions', []))
-                        vers.insert(0, {
-                            'version': target_version,
-                            'date': self._now_str()[:10],
-                            'changelog': '',
-                            'download_url': download_url,
-                        })
-                        data['versions'] = vers
-                    local_version_file.write_text(
-                        json.dumps(data, ensure_ascii=False, indent=2),
-                        encoding='utf-8',
-                    )
-                except Exception:
-                    pass
+            # 注意：暂不更新 version.json.latest_version
+            # 延后到 restarter.py 替换 .bin 成功后再写入
 
             marker_info = {
                 'version': target_version,
+                'download_url': download_url,
                 'prepared_at': self._now_str(),
                 'backup_dir': str(backup_dir),
             }
@@ -301,7 +344,7 @@ class VersionService:
 
             return {
                 'success': True,
-                'message': '更新包已准备完成，请关闭浏览器并重新双击启动脚本以应用更新',
+                'message': '更新包已准备，即将自动重启...',
                 'restart_required': True,
                 'backup_dir': str(backup_dir),
             }
@@ -335,3 +378,93 @@ class VersionService:
     def _now_str() -> str:
         from datetime import datetime
         return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+    @staticmethod
+    def trigger_restart_and_apply_update():
+        """触发独立的 restarter.py 脚本，以脱离模式运行，不阻塞当前请求。
+
+        Returns:
+            (success: bool, message: str)
+        """
+        project_root = BASE_DIR.parent
+        pending_marker = project_root / '.pending_update'
+        update_dir = project_root / '.bin_update'
+        restarter_py = BASE_DIR / 'src' / 'restarter.py'
+        log_file = (project_root / '.user_data' / 'restarter.log').resolve()
+
+        if not pending_marker.exists() or not update_dir.is_dir():
+            return False, '没有待应用的更新包（.pending_update 或 .bin_update 缺失）'
+
+        if not restarter_py.exists():
+            return False, 'restarter.py 脚本不存在，请检查安装完整性'
+
+        # 查找 Python 解释器
+        # 优先使用 .bin/python 下的（Windows portable），回退系统 python
+        python_exe = None
+        if sys.platform == 'win32':
+            for candidate in [
+                BASE_DIR / 'python' / 'pythonw.exe',
+                BASE_DIR / 'python' / 'python.exe',
+            ]:
+                if candidate.exists():
+                    python_exe = str(candidate)
+                    break
+        if python_exe is None:
+            # 回退：当前解释器路径 / sys.executable
+            # macOS: sys.executable 常指向 /usr/bin/python3 或 venv python
+            python_exe = sys.executable or (
+                '/usr/bin/python3' if sys.platform != 'win32' else 'python.exe'
+            )
+
+        # 确保 log 目录存在
+        try:
+            log_file.parent.mkdir(parents=True, exist_ok=True)
+        except Exception:
+            pass
+
+        # 构建子进程参数
+        args = [python_exe, str(restarter_py)]
+
+        # 为日志追加一个时间戳，便于排障
+        ts = str(int(time.time()))
+        env = os.environ.copy()
+        env['RESTARTER_MARKER_TS'] = ts
+
+        try:
+            if sys.platform == 'win32':
+                DETACHED_PROCESS = 0x00000008
+                CREATE_NEW_PROCESS_GROUP = 0x00000200
+                CREATE_NO_WINDOW = 0x08000000
+                creationflags = DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW
+                # 使用追加模式打开 log
+                with open(log_file, 'a', encoding='utf-8') as lf:
+                    lf.write(f"\n=== restarter 启动 ts={ts} ===\n")
+                subprocess.Popen(
+                    args,
+                    creationflags=creationflags,
+                    close_fds=True,
+                    stdout=open(log_file, 'a', encoding='utf-8'),
+                    stderr=subprocess.STDOUT,
+                    cwd=str(project_root),
+                    env=env,
+                )
+            else:
+                # macOS / Linux：start_new_session + nohup 语义
+                with open(log_file, 'a', encoding='utf-8') as lf:
+                    lf.write(f"\n=== restarter 启动 ts={ts} ===\n")
+                log_fh = open(log_file, 'a', encoding='utf-8')
+                subprocess.Popen(
+                    args,
+                    start_new_session=True,
+                    preexec_fn=os.setpgrp,
+                    close_fds=True,
+                    stdout=log_fh,
+                    stderr=subprocess.STDOUT,
+                    cwd=str(project_root),
+                    env=env,
+                )
+            # 给子进程 200ms 启动时间，避免父进程先于子进程启动导致的极端边缘情况
+            time.sleep(0.2)
+            return True, '重启脚本已启动，几秒后将自动重启并应用更新'
+        except Exception as e:
+            return False, f'启动重启脚本失败: {str(e)}'

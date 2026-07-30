@@ -775,7 +775,7 @@
     }
 
     /**
-     * 触发后端下载+解压+写标记流程（下次启动脚本再替换 .bin）
+     * 触发后端下载+解压+写标记流程
      */
     async function doDownloadUpdate(ev) {
         var btn = ev.currentTarget;
@@ -792,6 +792,8 @@
         var originalText = btn.textContent;
         btns.forEach(function(b) { b.disabled = true; });
         btn.textContent = '下载中...';
+
+        var willShowModal = false;  // 是否会弹出重启倒计时窗（弹窗会 delete 整个 versionModal，此时 finally 不需要还原按钮文字）
 
         try {
             var res = await fetch('/api/version/download', {
@@ -816,6 +818,10 @@
             if (!payload.success) {
                 // 已经有待处理更新 → 直接提示重启，不是错误
                 if (payload.restart_required) {
+                    willShowModal = true;
+                    // 给按钮一个清晰的过渡态，避免"下载中..."瞬闪消失
+                    btn.textContent = '准备就绪...';
+                    await _sleep(280);
                     showDownloadSuccessModal(payload.message || '已有待应用的更新包，请重启程序完成更新');
                 } else {
                     showToast(payload.message || '更新失败', 'error');
@@ -824,53 +830,275 @@
             }
 
             // 成功：提示重启
-            showDownloadSuccessModal(
-                payload.message || '更新包已准备完成，请关闭浏览器并重新双击启动脚本以应用更新'
-            );
+            willShowModal = true;
+            var msg = payload.message || '更新包已准备完成，请关闭浏览器并重新双击启动脚本以应用更新';
+
+            // 复用旧包（二次更新相同版本）：先显示准备就绪，给用户一个明确的过渡态
+            if (payload.reused_download) {
+                btn.textContent = '准备就绪...';
+                await _sleep(300);
+            }
+            showDownloadSuccessModal(msg);
         } catch (e) {
             showToast('更新失败：' + (e && e.message ? e.message : '网络错误'), 'error');
         } finally {
-            btns.forEach(function(b) { b.disabled = false; });
-            btn.textContent = originalText;
+            // 如果整个 versionModal 已经被 showDownloadSuccessModal 删掉了，就没必要还原按钮
+            var modalStillAlive = document.body.contains(btn);
+            if (modalStillAlive) {
+                btns.forEach(function(b) { b.disabled = false; });
+                btn.textContent = originalText;
+            }
         }
     }
 
+    function _sleep(ms) {
+        return new Promise(function(r) { setTimeout(r, ms); });
+    }
+
     /**
-     * 成功准备更新后的强提示弹窗（不再用 toast，避免用户没看见）
+     * 成功准备更新后的弹窗：精致的倒计时进度环 + 状态提示
+     * 3 秒倒计时结束自动触发重启，也可点击「立即重启」跳过
+     * 倒计时阶段：SVG 进度环 + 数字
+     * 重启等待阶段：spinner + 进度文字
+     * 跳转阶段：对勾 + 渐入动画
      */
     function showDownloadSuccessModal(message) {
         var vmodal = document.getElementById('versionModal');
         if (vmodal) vmodal.remove();
+        // 如果已经有倒计时窗在，先清掉（避免双层）
+        var oldModal = document.getElementById('restartCountdownModal');
+        if (oldModal) oldModal.remove();
 
         var m = document.createElement('div');
         m.className = 'version-modal';
+        m.id = 'restartCountdownModal';
+        // 使用更精致的布局：顶部大号进度环，中部状态，底部操作
         m.innerHTML =
-            '<div class="version-modal-mask"></div>' +
-            '<div class="version-modal-content" style="max-width:420px;">' +
-                '<div class="version-modal-header">' +
-                    '<h3>更新已就绪</h3>' +
+            '<div class="version-modal-mask" style="background:rgba(15,23,42,0.55);"></div>' +
+            '<div class="version-modal-content" style="max-width:420px;border-radius:18px;padding:28px 28px 22px;box-shadow:0 24px 60px rgba(15,23,42,0.25);">' +
+                // 标题 + 关闭按钮（倒计时中不允许关，但是放个柔和的视觉占位）
+                '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">' +
+                    '<h3 style="margin:0;font-size:18px;font-weight:600;color:#0f172a;">更新已就绪</h3>' +
+                    '<div style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#f1f5f9;color:#94a3b8;font-size:13px;">✓</div>' +
                 '</div>' +
-                '<div style="padding:8px 4px 20px;line-height:1.8;font-size:14px;color:#334155;">' +
-                    message +
-                    '<br/><br/>' +
-                    '<div style="background:#eff6ff;padding:12px 14px;border-radius:8px;border:1px solid #dbeafe;color:#1e40af;">' +
-                        '<strong>操作步骤：</strong><br/>' +
-                        '① 关闭当前页面<br/>' +
-                        '② 双击启动脚本（mac.command 或 windows.vbs）<br/>' +
-                        '③ 程序会自动替换新版本并打开' +
+                // 主体区：左侧进度环，右侧文案（小屏下自动堆叠）
+                '<div style="display:flex;gap:18px;align-items:center;margin:8px 0 20px;">' +
+                    // 左侧：80px SVG 进度环，内部显示倒计时数字
+                    '<div id="ringContainer" style="position:relative;width:88px;height:88px;flex-shrink:0;">' +
+                        '<svg width="88" height="88" viewBox="0 0 88 88">' +
+                            '<circle cx="44" cy="44" r="38" fill="none" stroke="#e2e8f0" stroke-width="7" />' +
+                            '<circle id="countdownRing" cx="44" cy="44" r="38" fill="none" stroke="#10b981" stroke-width="7" ' +
+                                'stroke-linecap="round" transform="rotate(-90 44 44)" ' +
+                                'stroke-dasharray="238.76" stroke-dashoffset="0" style="transition:stroke-dashoffset 1s linear,stroke 0.3s;" />' +
+                        '</svg>' +
+                        '<div id="countdownCenter" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;">' +
+                            '<span id="restartCountdown" style="font-size:26px;font-weight:700;color:#0f172a;line-height:1;">3</span>' +
+                            '<span style="font-size:10px;color:#64748b;margin-top:2px;">秒</span>' +
+                        '</div>' +
                     '</div>' +
-                    '<div style="margin-top:12px;font-size:12px;color:#64748b;">' +
-                        '※ 旧版本会备份到 .bin_backup 目录，如更新失败可手动改回' +
+                    // 右侧：文案区
+                    '<div style="flex:1;min-width:0;">' +
+                        '<div id="restartMsg" style="font-size:14px;color:#334155;line-height:1.7;margin-bottom:8px;">' +
+                            (message || '更新包已准备完成') +
+                        '</div>' +
+                        '<div style="font-size:12.5px;color:#065f46;background:linear-gradient(135deg,#ecfdf5,#dcfce7);' +
+                            'border:1px solid #bbf7d0;border-radius:10px;padding:8px 12px;line-height:1.6;">' +
+                            '· 即将自动重启并应用更新<br/>' +
+                            '· 重启后自动回到 <strong>上传页</strong>' +
+                        '</div>' +
                     '</div>' +
                 '</div>' +
-                '<div style="display:flex;justify-content:flex-end;">' +
-                    '<button class="version-update-btn" id="okRestartBtn" style="background:#10b981;border:none;padding:10px 20px;border-radius:8px;color:white;cursor:pointer;font-size:14px;">我知道了</button>' +
+                // 状态行：spinner + 文字
+                '<div id="restartStatusRow" style="display:flex;align-items:center;gap:8px;min-height:22px;margin-bottom:14px;">' +
+                    '<span id="restartSpinner" style="display:none;width:16px;height:16px;border:2px solid #cbd5e1;border-top-color:#10b981;' +
+                        'border-radius:50%;animation:update-spin 0.8s linear infinite;"></span>' +
+                    '<span id="restartStatus" style="font-size:13px;color:#64748b;">等待倒计时...</span>' +
                 '</div>' +
-            '</div>';
+                // 进度条（等待服务恢复时展示）
+                '<div id="restartProgressBar" style="display:none;height:4px;border-radius:999px;background:#f1f5f9;overflow:hidden;margin-bottom:14px;">' +
+                    '<div id="restartProgressFill" style="height:100%;width:0%;background:linear-gradient(90deg,#10b981,#34d399);transition:width 1s linear;"></div>' +
+                '</div>' +
+                // 操作行
+                '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;">' +
+                    '<div id="restartProgress" style="font-size:12px;color:#94a3b8;flex:1;"></div>' +
+                    '<button class="version-update-btn" id="restartNowBtn" style="background:linear-gradient(135deg,#10b981,#059669);' +
+                        'border:none;padding:10px 20px;border-radius:10px;color:white;cursor:pointer;font-size:14px;font-weight:500;' +
+                        'box-shadow:0 6px 16px rgba(16,185,129,0.25);transition:transform 0.15s ease,opacity 0.2s ease;' +
+                        '" onmouseover="this.style.transform=\'translateY(-1px)\'" onmouseout="this.style.transform=\'translateY(0)\'">立即重启</button>' +
+                '</div>' +
+            '</div>' +
+            '<style>' +
+                '@keyframes update-spin { to { transform: rotate(360deg); } }' +
+                '@keyframes update-fadein { from { opacity:0; transform: translateY(4px);} to {opacity:1; transform:none;} }' +
+                '#restartCountdownModal .version-modal-content { animation: update-fadein 0.22s ease-out both; }' +
+            '</style>';
 
         document.body.appendChild(m);
-        m.querySelector('.version-modal-mask').onclick = function() { m.remove(); };
-        m.querySelector('#okRestartBtn').onclick = function() { m.remove(); };
+
+        var CIRCUMFERENCE = 2 * Math.PI * 38;  // ≈ 238.76
+        var ring = m.querySelector('#countdownRing');
+        var countdownEl = m.querySelector('#restartCountdown');
+        var centerWrap = m.querySelector('#countdownCenter');
+        var ringContainer = m.querySelector('#ringContainer');
+        var statusEl = m.querySelector('#restartStatus');
+        var statusRow = m.querySelector('#restartStatusRow');
+        var spinner = m.querySelector('#restartSpinner');
+        var progressText = m.querySelector('#restartProgress');
+        var progressBar = m.querySelector('#restartProgressBar');
+        var progressFill = m.querySelector('#restartProgressFill');
+        var nowBtn = m.querySelector('#restartNowBtn');
+        var msgEl = m.querySelector('#restartMsg');
+
+        var hasTriggered = false;
+        var MAX_WAIT = 30;
+
+        function setRingProgress(pct, color) {
+            // pct: 0~1
+            if (ring) {
+                var offset = CIRCUMFERENCE * (1 - Math.max(0, Math.min(1, pct)));
+                ring.style.strokeDashoffset = offset.toFixed(2);
+                if (color) ring.style.stroke = color;
+            }
+        }
+
+        function setWaitingUi(initialText) {
+            // 切换到等待模式：中心显示 spinner，隐藏倒计时数字
+            if (centerWrap) {
+                centerWrap.innerHTML =
+                    '<div style="width:24px;height:24px;border:3px solid #cbd5e1;border-top-color:#10b981;' +
+                    'border-radius:50%;animation:update-spin 0.7s linear infinite;"></div>';
+            }
+            setRingProgress(1, '#10b981');  // 满圈绿色，表示"进行中"
+            if (spinner) spinner.style.display = 'inline-block';
+            if (statusEl) statusEl.textContent = initialText || '服务正在重启，等待恢复...';
+            if (progressBar) progressBar.style.display = 'block';
+            if (nowBtn) {
+                nowBtn.disabled = true;
+                nowBtn.style.opacity = '0.7';
+                nowBtn.textContent = '重启中...';
+            }
+        }
+
+        function setSuccessUi() {
+            if (centerWrap) {
+                centerWrap.innerHTML =
+                    '<svg width="34" height="34" viewBox="0 0 34 34"><circle cx="17" cy="17" r="16" fill="#10b981"/>' +
+                    '<path d="M10.5 17.6 L15 22 L24.5 12" stroke="white" stroke-width="2.6" fill="none" ' +
+                    'stroke-linecap="round" stroke-linejoin="round"/></svg>';
+            }
+            setRingProgress(1, '#10b981');
+            if (spinner) spinner.style.display = 'none';
+            if (statusEl) {
+                statusEl.innerHTML = '<span style="color:#059669;font-weight:500;">服务已恢复！正在跳转到上传页...</span>';
+            }
+            if (nowBtn) {
+                nowBtn.textContent = '完成';
+                nowBtn.style.background = 'linear-gradient(135deg,#10b981,#059669)';
+            }
+        }
+
+        function setErrorUi(finalText) {
+            setRingProgress(1, '#ef4444');
+            if (centerWrap) {
+                centerWrap.innerHTML =
+                    '<svg width="30" height="30" viewBox="0 0 30 30"><circle cx="15" cy="15" r="14" fill="#fef2f2" stroke="#fca5a5" stroke-width="2"/>' +
+                    '<path d="M10 10 L20 20 M20 10 L10 20" stroke="#ef4444" stroke-width="2.4" stroke-linecap="round"/></svg>';
+            }
+            if (spinner) spinner.style.display = 'none';
+            if (statusEl) {
+                statusEl.innerHTML = '<span style="color:#dc2626;">' + (finalText || '服务恢复超时') + '</span>';
+            }
+            if (nowBtn) {
+                nowBtn.disabled = false;
+                nowBtn.style.opacity = '1';
+                nowBtn.textContent = '重试';
+            }
+        }
+
+        function triggerRestartFlow() {
+            if (hasTriggered) return;
+            hasTriggered = true;
+            setWaitingUi('请求服务端重启中...');
+
+            // 调重启 API（不带 X-Auth 密码头）
+            fetch('/api/version/restart', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({})
+            }).then(function(r) {
+                try { return r.json(); } catch (_) { return {}; }
+            }).then(function(d) {
+                if (!d || d.status !== 'ok') {
+                    throw new Error((d && d.message) || '重启请求失败');
+                }
+                waitServerAndRedirect();
+            }).catch(function(err) {
+                // 失败：也尝试等一下，可能进程已经在关了
+                if (statusEl) {
+                    statusEl.textContent = (err && err.message ? err.message : '重启请求异常') + '，仍尝试等待服务恢复...';
+                }
+                setTimeout(waitServerAndRedirect, 1500);
+            });
+        }
+
+        function waitServerAndRedirect() {
+            var attempts = 0;
+            if (progressText) progressText.textContent = '等待恢复 0s / ' + MAX_WAIT + 's';
+            if (progressFill) progressFill.style.width = '0%';
+
+            var timer = setInterval(function() {
+                attempts++;
+                var pct = attempts / MAX_WAIT;
+                if (progressFill) progressFill.style.width = (pct * 100).toFixed(1) + '%';
+                if (progressText) progressText.textContent = '等待恢复 ' + attempts + 's / ' + MAX_WAIT + 's';
+                fetch('/api/summary', { cache: 'no-store' })
+                    .then(function(r) {
+                        if (r.ok) {
+                            clearInterval(timer);
+                            if (progressFill) progressFill.style.width = '100%';
+                            setSuccessUi();
+                            // 给对勾动画留一点时间
+                            setTimeout(function() { location.href = '/upload.html'; }, 650);
+                        }
+                    })
+                    .catch(function() { /* 服务还没起来，忽略 */ });
+                if (attempts >= MAX_WAIT) {
+                    clearInterval(timer);
+                    hasTriggered = false;
+                    setErrorUi('服务恢复超时，请手动刷新或双击启动脚本');
+                }
+            }, 1000);
+        }
+
+        // 倒计时：3 秒，进度环随秒数减少
+        var seconds = 3;
+        setRingProgress(1, '#10b981');
+        var timerId = setInterval(function() {
+            seconds--;
+            if (countdownEl) countdownEl.textContent = seconds;
+            setRingProgress(seconds / 3, '#10b981');
+            if (seconds <= 0) {
+                clearInterval(timerId);
+                triggerRestartFlow();
+            }
+        }, 1000);
+
+        nowBtn.onclick = function() {
+            clearInterval(timerId);
+            if (countdownEl) countdownEl.textContent = 0;
+            setRingProgress(0, '#10b981');
+            triggerRestartFlow();
+        };
+
+        // 重试按钮（超时后出现）
+        nowBtn.addEventListener('click', function() {
+            if (nowBtn.textContent === '重试') {
+                // 重置 UI 后重新触发
+                hasTriggered = false;
+                setWaitingUi('重新请求服务端重启...');
+                setTimeout(triggerRestartFlow, 300);
+            }
+        });
     }
 
     // ============ 授权状态管理 ============
