@@ -57,12 +57,52 @@
         loadAlbums();
         updateUI();
 
-        // 版本检查
-        document.getElementById('checkUpdateBtn').addEventListener('click', checkUpdate);
+        // Tab 切换
+        var tabBtns = document.querySelectorAll('.upload-tab');
+        for (var t = 0; t < tabBtns.length; t++) {
+            tabBtns[t].addEventListener('click', function() {
+                var target = this.getAttribute('data-tab');
+                document.querySelectorAll('.upload-tab').forEach(function(b) { b.classList.remove('active'); });
+                document.querySelectorAll('.upload-tab-panel').forEach(function(p) { p.classList.remove('active'); });
+                this.classList.add('active');
+                var panel = document.getElementById('tab-' + target);
+                if (panel) panel.classList.add('active');
+                if (target === 'mobile') {
+                    refreshMobileQr();
+                }
+            });
+        }
 
-        // 授权状态
+        // Version check
+        document.getElementById('checkUpdateBtn').addEventListener('click', checkUpdate);
+        
+        // Auto check for new version on load
+        checkForNewVersion();
+
+        // License status
         document.getElementById('licenseActionBtn').addEventListener('click', handleLicenseAction);
         loadLicenseStatus();
+    }
+    
+    /**
+     * Check for new version and show badge if available
+     */
+    async function checkForNewVersion() {
+        try {
+            const res = await fetch('/api/version/list');
+            const data = await res.json();
+            if (data.error) return;
+            
+            const localVersion = data.local_version || '0.0.0';
+            const latestVersion = data.latest_version || '';
+            
+            if (latestVersion && latestVersion !== localVersion) {
+                const badge = document.getElementById('updateBadge');
+                if (badge) badge.style.display = 'inline';
+            }
+        } catch (e) {
+            // Silent fail
+        }
     }
 
     /**
@@ -684,7 +724,11 @@
                 if (isCurrent) {
                     actionHtml = '<span class="version-current-tag">当前版本</span>';
                 } else if (v.download_url) {
-                    actionHtml = '<button class="version-update-btn" data-url="' + v.download_url + '">更新到此版本</button>';
+                    actionHtml =
+                        '<button class="version-update-btn" ' +
+                        'data-url="' + v.download_url + '" ' +
+                        'data-version="' + v.version + '"' +
+                        '>更新到此版本</button>';
                 } else {
                     actionHtml = '<span class="version-no-download">暂无下载地址</span>';
                 }
@@ -715,7 +759,7 @@
                     '当前版本：<span class="version-current-badge">v' + localVersion + '</span>' +
                     (hasUpdate ? '<span class="version-new-badge">有新版本 v' + latestVersion + '</span>' : '<span class="version-latest-badge">已是最新</span>') +
                 '</div>' +
-                '<div class="version-modal-tip">下载新版本后，点击入口文件重启即可完成更新</div>' +
+                '<div class="version-modal-tip">下载更新包后会在下次启动时自动应用（旧版本会备份，可手动回退）</div>' +
                 '<div class="version-modal-list">' + versionsHtml + '</div>' +
             '</div>';
 
@@ -726,10 +770,107 @@
 
         var updateBtns = modal.querySelectorAll('.version-update-btn');
         for (var i = 0; i < updateBtns.length; i++) {
-            updateBtns[i].onclick = function() {
-                window.open(this.getAttribute('data-url'), '_blank');
-            };
+            updateBtns[i].onclick = doDownloadUpdate;
         }
+    }
+
+    /**
+     * 触发后端下载+解压+写标记流程（下次启动脚本再替换 .bin）
+     */
+    async function doDownloadUpdate(ev) {
+        var btn = ev.currentTarget;
+        var url = btn.getAttribute('data-url') || '';
+        var version = btn.getAttribute('data-version') || '';
+        if (!url) return;
+
+        // 1) 获取密码（需要管理员权限才能更新）
+        var pwd = await getPassword();
+        if (!pwd) return;  // 用户取消
+
+        // 2) 按钮进入 loading 状态，禁用所有同类按钮
+        var btns = document.querySelectorAll('#versionModal .version-update-btn');
+        var originalText = btn.textContent;
+        btns.forEach(function(b) { b.disabled = true; });
+        btn.textContent = '下载中...';
+
+        try {
+            var res = await fetch('/api/version/download', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-Auth': pwd },
+                body: JSON.stringify({ download_url: url, version: version }),
+            });
+            var payload = null;
+            try { payload = await res.json(); } catch (_) {}
+
+            if (res.status === 401) {
+                clearPassword();
+                showToast('密码错误，无法执行更新', 'error');
+                return;
+            }
+
+            if (!payload) {
+                showToast('更新失败：服务端无响应', 'error');
+                return;
+            }
+
+            if (!payload.success) {
+                // 已经有待处理更新 → 直接提示重启，不是错误
+                if (payload.restart_required) {
+                    showDownloadSuccessModal(payload.message || '已有待应用的更新包，请重启程序完成更新');
+                } else {
+                    showToast(payload.message || '更新失败', 'error');
+                }
+                return;
+            }
+
+            // 成功：提示重启
+            showDownloadSuccessModal(
+                payload.message || '更新包已准备完成，请关闭浏览器并重新双击启动脚本以应用更新'
+            );
+        } catch (e) {
+            showToast('更新失败：' + (e && e.message ? e.message : '网络错误'), 'error');
+        } finally {
+            btns.forEach(function(b) { b.disabled = false; });
+            btn.textContent = originalText;
+        }
+    }
+
+    /**
+     * 成功准备更新后的强提示弹窗（不再用 toast，避免用户没看见）
+     */
+    function showDownloadSuccessModal(message) {
+        var vmodal = document.getElementById('versionModal');
+        if (vmodal) vmodal.remove();
+
+        var m = document.createElement('div');
+        m.className = 'version-modal';
+        m.innerHTML =
+            '<div class="version-modal-mask"></div>' +
+            '<div class="version-modal-content" style="max-width:420px;">' +
+                '<div class="version-modal-header">' +
+                    '<h3>更新已就绪</h3>' +
+                '</div>' +
+                '<div style="padding:8px 4px 20px;line-height:1.8;font-size:14px;color:#334155;">' +
+                    message +
+                    '<br/><br/>' +
+                    '<div style="background:#eff6ff;padding:12px 14px;border-radius:8px;border:1px solid #dbeafe;color:#1e40af;">' +
+                        '<strong>操作步骤：</strong><br/>' +
+                        '① 关闭当前页面<br/>' +
+                        '② 双击启动脚本（mac.command 或 windows.vbs）<br/>' +
+                        '③ 程序会自动替换新版本并打开' +
+                    '</div>' +
+                    '<div style="margin-top:12px;font-size:12px;color:#64748b;">' +
+                        '※ 旧版本会备份到 .bin_backup 目录，如更新失败可手动改回' +
+                    '</div>' +
+                '</div>' +
+                '<div style="display:flex;justify-content:flex-end;">' +
+                    '<button class="version-update-btn" id="okRestartBtn" style="background:#10b981;border:none;padding:10px 20px;border-radius:8px;color:white;cursor:pointer;font-size:14px;">我知道了</button>' +
+                '</div>' +
+            '</div>';
+
+        document.body.appendChild(m);
+        m.querySelector('.version-modal-mask').onclick = function() { m.remove(); };
+        m.querySelector('#okRestartBtn').onclick = function() { m.remove(); };
     }
 
     // ============ 授权状态管理 ============
@@ -864,13 +1005,83 @@
         });
     }
 
+    /**
+     * 刷新手机扫码上传的二维码
+     */
+    async function refreshMobileQr() {
+        const img = document.getElementById('qrCodeImg');
+        const loading = document.getElementById('qrLoading');
+        const urlText = document.getElementById('mobileUrlText');
+        if (!img || !loading) return;
+
+        loading.style.display = '';
+        img.style.display = 'none';
+
+        try {
+            const res = await fetch('/api/lan-info');
+            const data = await res.json();
+            if (!data.url) throw new Error('获取局域网地址失败');
+
+            // 使用免费 QR Server API 生成二维码（离线不依赖外网的备选：显示 URL 手动输入）
+            const qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=280x280&margin=10&data='
+                + encodeURIComponent(data.url);
+            img.onload = () => {
+                loading.style.display = 'none';
+                img.style.display = '';
+            };
+            img.onerror = () => {
+                loading.textContent = '二维码加载失败，请复制下方链接在手机浏览器打开';
+            };
+            img.src = qrUrl;
+            urlText.textContent = data.url;
+            urlText.dataset.url = data.url;
+        } catch (e) {
+            loading.textContent = '获取局域网地址失败：' + (e.message || '');
+        }
+    }
+
+    /**
+     * 复制手机上传链接到剪贴板
+     */
+    function copyMobileUrl() {
+        const urlText = document.getElementById('mobileUrlText');
+        if (!urlText) return;
+        const url = urlText.dataset.url || urlText.textContent || '';
+        if (!url || url.startsWith('等待')) {
+            showToast('还没有获取到上传地址', 'warning');
+            return;
+        }
+        const doCopy = (text) => {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.left = '-9999px';
+            document.body.appendChild(ta);
+            ta.select();
+            try { document.execCommand('copy'); showToast('已复制链接，发到手机浏览器打开即可', 'success'); }
+            catch (err) { showToast('复制失败，请手动复制', 'error'); }
+            document.body.removeChild(ta);
+        };
+        if (navigator.clipboard && window.isSecureContext === false) {
+            doCopy(url);
+        } else if (navigator.clipboard) {
+            navigator.clipboard.writeText(url)
+                .then(() => showToast('已复制链接，发到手机浏览器打开即可', 'success'))
+                .catch(() => doCopy(url));
+        } else {
+            doCopy(url);
+        }
+    }
+
     window.UploadApp = {
         init,
         selectAlbum,
         clearAlbumSelection,
         showRenameAlbum,
         closeRenameModal,
-        removeFile
+        removeFile,
+        refreshMobileQr,
+        copyMobileUrl
     };
 
     if (document.readyState === 'loading') {

@@ -14,14 +14,14 @@ import webbrowser
 from pathlib import Path
 
 PORT = 8089
-MAX_WAIT = 10  # 最多等待10秒
+MAX_WAIT = 8  # 最多等待8秒
 
 
 def is_port_in_use():
-    """检测端口是否已被占用"""
+    """检测端口是否已被占用（超时 0.3 秒足够）"""
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.settimeout(1)
+            s.settimeout(0.3)
             result = s.connect_ex(('localhost', PORT))
             return result == 0
     except OSError:
@@ -29,7 +29,9 @@ def is_port_in_use():
 
 
 def kill_port():
-    """强制释放端口"""
+    """仅在端口被占用时才清理，减少无意义等待"""
+    if not is_port_in_use():
+        return
     try:
         if sys.platform == 'darwin':
             result = subprocess.run(['lsof', '-ti:8089'], capture_output=True, text=True)
@@ -39,12 +41,16 @@ def kill_port():
                         os.kill(int(pid), 9)
                     except (ProcessLookupError, PermissionError, ValueError):
                         pass
-                time.sleep(1)
+                # 快速等待端口释放，最多 2 秒
+                for _ in range(10):
+                    time.sleep(0.2)
+                    if not is_port_in_use():
+                        break
         elif sys.platform == 'linux':
             result = subprocess.run(['fuser', '8089/tcp'], capture_output=True, text=True)
             if result.stdout.strip():
                 subprocess.run(['fuser', '-k', '8089/tcp'], capture_output=True)
-                time.sleep(1)
+                time.sleep(0.5)
         else:  # Windows
             result = subprocess.run(['netstat', '-ano'], capture_output=True, text=True)
             for line in result.stdout.split('\n'):
@@ -56,7 +62,7 @@ def kill_port():
                             subprocess.run(['taskkill', '/F', '/PID', pid], capture_output=True)
                         except (subprocess.SubprocessError, FileNotFoundError):
                             pass
-            time.sleep(1)
+            time.sleep(0.5)
     except Exception as e:
         print(f"清理端口失败: {e}", file=sys.stderr)
 
@@ -72,12 +78,12 @@ def open_browser(url):
 
 
 def wait_for_server(timeout=MAX_WAIT):
-    """等待服务就绪"""
+    """等待服务就绪（每 0.05 秒轮询一次）"""
     start = time.time()
     while time.time() - start < timeout:
         if is_port_in_use():
             return True
-        time.sleep(0.1)
+        time.sleep(0.05)
     return False
 
 

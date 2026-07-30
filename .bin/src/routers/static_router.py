@@ -7,7 +7,7 @@ import shutil
 from pathlib import Path
 from typing import Dict, Any
 
-from config import DATA_DIR, PREVIEW_DIR, WEB_DIR
+from config import DATA_DIR, PREVIEW_DIR, WEB_DIR, FORCE_FIRST_TIME_GUIDE
 from utils import get_logger
 
 _logger = get_logger('static_router')
@@ -21,10 +21,15 @@ class StaticRouterMixin:
             '/': 'serve_index',
             '/index.html': 'serve_index',
             '/upload.html': 'serve_upload',
+            '/mobile-upload': 'serve_mobile_upload',
+            '/mobile-upload.html': 'serve_mobile_upload',
             '/subscribe.html': 'serve_subscribe',
             '/generate_license.html': 'serve_generate_license',
             '/style.css': 'serve_style',
             '/app.js': 'serve_app_js',
+            '/upload.js': 'serve_upload_js',
+            '/upload.css': 'serve_upload_css',
+            '/mobile-upload.css': 'serve_mobile_upload_css',
             '/media-processor.js': 'serve_media_processor_js',
             '/vue.global.min.js': 'serve_vue_min',
             '/api/summary': 'handle_summary',
@@ -38,6 +43,8 @@ class StaticRouterMixin:
             '/api/version/list': 'handle_version_list',
             '/api/license/status': 'handle_license_status',
             '/api/license/config': 'handle_get_license_config',
+            '/api/ui-config': 'handle_ui_config',
+            '/api/lan-info': 'handle_lan_info',
         },
         'POST': {
             '/api/albums/create': 'handle_create_album',
@@ -55,6 +62,7 @@ class StaticRouterMixin:
             '/api/license/clear': 'handle_license_clear',
             '/api/license/config': 'handle_set_license_config',
             '/api/verify': 'handle_verify',
+            '/api/version/download': 'handle_version_download',
         },
         'DELETE': {}
     }
@@ -231,11 +239,12 @@ class StaticRouterMixin:
         """提供内联 CSS/JS 的 HTML 页面（减少 HTTP 请求数）
 
         将 <link>/<script> 标签替换为内联 <style>/<script>，并转义内部 </script>。
+        js_name 为 None 时不内联 JS。
         """
         try:
             html_content = (WEB_DIR / html_name).read_text(encoding='utf-8')
             css_content = (WEB_DIR / css_name).read_text(encoding='utf-8')
-            js_content = (WEB_DIR / js_name).read_text(encoding='utf-8')
+            js_content = (WEB_DIR / js_name).read_text(encoding='utf-8') if js_name else ''
             config_path = WEB_DIR / 'config.js'
             config_content = config_path.read_text(encoding='utf-8') if config_path.exists() else ''
 
@@ -249,12 +258,13 @@ class StaticRouterMixin:
                     '<script src="config.js"></script>',
                     f'<script>{safe_config}</script>'
                 )
-            safe_js = js_content.replace('</script>', '<\\/script>')
-            html_content = re.sub(
-                r'<script src="' + re.escape(js_name) + r'(\?v=[^"]*)?"></script>',
-                f'<script>{safe_js}</script>',
-                html_content
-            )
+            if js_content:
+                safe_js = js_content.replace('</script>', '<\\/script>')
+                html_content = re.sub(
+                    r'<script src="' + re.escape(js_name) + r'(\?v=[^"]*)?"></script>',
+                    f'<script>{safe_js}</script>',
+                    html_content
+                )
 
             body = html_content.encode('utf-8')
             self.send_response(200)
@@ -277,6 +287,22 @@ class StaticRouterMixin:
     def serve_upload(self, query: Dict[str, Any]) -> None:
         """提供上传页（CSS/JS内联，减少HTTP请求数）"""
         self._serve_inlined_page('upload.html', 'upload.css', 'upload.js', no_cache=False)
+
+    def serve_upload_js(self, query: Dict[str, Any]) -> None:
+        """提供上传页JS"""
+        self.serve_file(WEB_DIR / 'upload.js', 'application/javascript')
+
+    def serve_upload_css(self, query: Dict[str, Any]) -> None:
+        """提供上传页CSS"""
+        self.serve_file(WEB_DIR / 'upload.css', 'text/css')
+
+    def serve_mobile_upload(self, query: Dict[str, Any]) -> None:
+        """提供手机端扫码上传页"""
+        self._serve_inlined_page('mobile-upload.html', 'mobile-upload.css', None, no_cache=True)
+
+    def serve_mobile_upload_css(self, query: Dict[str, Any]) -> None:
+        """提供手机端上传页CSS"""
+        self.serve_file(WEB_DIR / 'mobile-upload.css', 'text/css')
 
     def serve_subscribe(self, query: Dict[str, Any]) -> None:
         """提供订阅介绍页（CSS/JS内联）"""
@@ -302,3 +328,67 @@ class StaticRouterMixin:
     def serve_vue_min(self, query: Dict[str, Any]) -> None:
         """提供Vue生产版"""
         self.serve_file(WEB_DIR / 'vue.global.min.js', 'application/javascript')
+
+    def handle_ui_config(self, query: Dict[str, Any]) -> None:
+        """返回 UI 相关配置（如强制首次引导、首次上传时间等）"""
+        from db import get_config
+        first_upload = get_config('first_upload_time')
+        data = {
+            'force_first_time_guide': bool(FORCE_FIRST_TIME_GUIDE),
+            'has_uploaded': first_upload is not None,
+        }
+        self.send_json(data)
+
+    def handle_lan_info(self, query: Dict[str, Any]) -> None:
+        """返回局域网 IP + 端口 + 临时上传 token，用于手机扫码上传
+
+        返回示例：
+        {
+            "ip": "192.168.1.23",
+            "port": 8089,
+            "token": "xxxx",
+            "url": "http://192.168.1.23:8089/mobile-upload?token=xxxx"
+        }
+        """
+        import socket
+        from config import SERVER_PORT
+        from .auth_middleware import create_upload_token
+
+        ip = self._get_lan_ip()
+        token = create_upload_token()
+        url = f"http://{ip}:{SERVER_PORT}/mobile-upload?token={token}"
+        data = {
+            'ip': ip,
+            'port': SERVER_PORT,
+            'token': token,
+            'url': url,
+        }
+        self.send_json(data)
+
+    @staticmethod
+    def _get_lan_ip() -> str:
+        """获取本机局域网 IP（优先返回非 127.0.0.1 的第一个地址）"""
+        import socket
+        try:
+            # 创建一个到外部地址的 UDP socket，从返回信息取本机 IP
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            try:
+                s.connect(('8.8.8.8', 80))
+                ip = s.getsockname()[0]
+            finally:
+                s.close()
+            if ip and not ip.startswith('127.'):
+                return ip
+        except Exception:
+            pass
+
+        # 回退方案：gethostbyname_ex
+        try:
+            hostname = socket.gethostname()
+            for ip in socket.gethostbyname_ex(hostname)[2]:
+                if not ip.startswith('127.'):
+                    return ip
+        except Exception:
+            pass
+
+        return '127.0.0.1'

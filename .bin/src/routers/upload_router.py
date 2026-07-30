@@ -36,14 +36,20 @@ class UploadRouterMixin:
 
         form = parse_multipart(data, boundary)
 
-        album_name = form.get('album', '').strip()
-        new_album = form.get('new_album', '').strip()
+        # 兼容两种字段名：电脑端(album/new_album) / 移动端(album_name/new_album_name)
+        album_name = (form.get('album') or form.get('album_name') or '').strip()
+        new_album = (form.get('new_album') or form.get('new_album_name') or '').strip()
         tags_str = form.get('tags', '[]')
 
+        # tags 支持两种格式：JSON 数组（电脑端）或 逗号/空格分隔字符串（移动端）
+        tags = []
         try:
             tags = json.loads(tags_str)
+            if not isinstance(tags, list): tags = []
         except Exception:
-            tags = []
+            if tags_str:
+                import re
+                tags = [t for t in re.split(r'[,，\s]+', tags_str) if t]
 
         file_items = []
         if isinstance(form.get('file'), list):

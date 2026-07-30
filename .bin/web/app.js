@@ -647,3 +647,106 @@ const app = createApp({
 });
 
 window.__vm = app.mount("#app");
+
+// ---------- 首次进入引导遮罩（首页） ----------
+(function () {
+    function showGuide() {
+        // 等待 DOM 渲染完成后定位按钮
+        setTimeout(function () {
+            var btn = document.querySelector('.btn-edit-mode');
+            if (!btn) { return; }
+
+            var rect = btn.getBoundingClientRect();
+            var old = document.getElementById('spotlightGuide');
+            if (old) old.remove();
+
+            var btnStyle = window.getComputedStyle(btn);
+            var spotRadius = btnStyle.borderRadius || '8px';
+
+            // 核心：用 box-shadow 实现真正的圆角矩形镂空遮罩
+            // 透明 div + 向外扩散的黑色 box-shadow = 完美的聚光灯效果
+            var spotlight = document.createElement('div');
+            spotlight.id = 'spotlightGuide';
+            spotlight.style.cssText = [
+                'position:fixed',
+                'left:' + rect.left + 'px',
+                'top:' + rect.top + 'px',
+                'width:' + rect.width + 'px',
+                'height:' + rect.height + 'px',
+                'border-radius:' + spotRadius,
+                'box-shadow:0 0 0 9999px rgba(0,0,0,0.95)',
+                'z-index:9999',
+                'pointer-events:auto',
+            ].join(';');
+
+            // 引导提示气泡（居中显示在按钮下方）
+            var tipW = 380;
+            var tipH = 220;
+            var tipLeft = Math.max(16, (window.innerWidth - tipW) / 2);
+            var belowSpace = window.innerHeight - (rect.top + rect.height);
+            var tipTop = (belowSpace > tipH + 24)
+                ? (rect.top + rect.height + 16)
+                : Math.max(16, rect.top - tipH - 16);
+
+            var tip = document.createElement('div');
+            tip.style.cssText = 'position:fixed;z-index:10001;' +
+                'left:' + tipLeft + 'px;' +
+                'top:' + tipTop + 'px;' +
+                'width:' + tipW + 'px;' +
+                'background:#fff;border-radius:12px;padding:24px 28px;' +
+                'box-shadow:0 8px 32px rgba(0,0,0,0.25);' +
+                'box-sizing:border-box;';
+            tip.innerHTML =
+                '<div style="font-size:18px;font-weight:600;color:#1e293b;margin-bottom:12px;">欢迎使用本地相册</div>' +
+                '<div style="font-size:14px;color:#64748b;line-height:1.7;margin-bottom:16px;">' +
+                    '点击上方的「编辑模式」按钮进入编辑状态，<br>' +
+                    '然后点击「上传」按钮上传照片。' +
+                '</div>' +
+                '<div style="font-size:14px;color:#64748b;line-height:1.7;margin-bottom:16px;">' +
+                    '上传密码：<strong style="color:#667eea;font-size:16px;">111222</strong>' +
+                '</div>' +
+                '<button id="spotlightCloseBtn" style="' +
+                    'background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);' +
+                    'color:#fff;border:none;padding:10px 28px;border-radius:8px;' +
+                    'font-size:15px;cursor:pointer;width:100%;font-weight:500;' +
+                '">知道了</button>';
+
+            // 组装：先加聚光灯（带 box-shadow 的镂空层），再加提示气泡
+            document.body.appendChild(spotlight);
+            document.body.appendChild(tip);
+
+            function closeGuide() {
+                spotlight.remove();
+                tip.remove();
+            }
+
+            // 点击镂空区域外的黑色遮罩关闭
+            spotlight.addEventListener('click', function (e) {
+                if (e.target === spotlight) {
+                    closeGuide();
+                }
+            });
+            // "知道了"按钮关闭
+            tip.querySelector('#spotlightCloseBtn').onclick = function () {
+                closeGuide();
+            };
+            // ESC 关闭
+            document.addEventListener('keydown', function onKey(e) {
+                if (e.key === 'Escape') {
+                    closeGuide();
+                    document.removeEventListener('keydown', onKey);
+                }
+            });
+        }, 800);
+    }
+
+    // 检查是否需要显示引导
+    fetch('/api/ui-config').then(function (r) { return r.json(); }).then(function (cfg) {
+        if (cfg.force_first_time_guide) {
+            showGuide();
+        } else if (!cfg.has_uploaded) {
+            // 没有上传过，显示引导
+            showGuide();
+        }
+    }).catch(function () { /* ignore */ });
+})();

@@ -1183,3 +1183,95 @@ TypeError: 'str' object is not callable
 2026-07-29 23:53:23 [INFO] main: 服务已启动: http://localhost:8089
 2026-07-30 00:20:41 [INFO] main: 数据库初始化完成
 2026-07-30 00:20:41 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-30 17:08:08 [INFO] main: 数据库初始化完成
+2026-07-30 17:08:08 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-30 17:12:03 [INFO] main: 数据库初始化完成
+2026-07-30 17:12:03 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-30 17:14:33 [INFO] main: 数据库初始化完成
+2026-07-30 17:14:33 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-30 17:15:53 [INFO] main: 数据库初始化完成
+2026-07-30 17:16:39 [INFO] main: 数据库初始化完成
+2026-07-30 17:17:42 [INFO] main: 数据库初始化完成
+2026-07-30 17:17:42 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-30 17:45:17 [INFO] main: 数据库初始化完成
+2026-07-30 17:54:20 [INFO] main: 数据库初始化完成
+2026-07-30 17:54:20 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-30 18:31:46 [INFO] main: 数据库初始化完成
+2026-07-30 18:31:46 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-30 18:51:56 [INFO] main: 数据库初始化完成
+2026-07-30 18:51:56 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-30 19:11:29 [INFO] main: 数据库初始化完成
+2026-07-30 19:11:29 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-30 19:13:32 [INFO] main: 数据库初始化完成
+2026-07-30 19:13:32 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-30 21:24:44 [INFO] main: 数据库初始化完成
+2026-07-30 21:24:55 [INFO] main: 数据库初始化完成
+2026-07-30 21:24:55 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-30 21:33:23 [INFO] main: 数据库初始化完成
+2026-07-30 21:33:23 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-30 21:45:51 [INFO] main: 数据库初始化完成
+2026-07-30 21:45:51 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-30 22:11:16 [ERROR] static_router: 读取页面失败 html=mobile-upload.html: [Errno 32] Broken pipe
+Traceback (most recent call last):
+  File "/Users/apple/Desktop/Qorder/.bin/src/routers/static_router.py", line 278, in _serve_inlined_page
+    self.wfile.write(body)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+2026-07-30 22:36:22 [ERROR] static_router: 读取文件失败 path=/Users/apple/Desktop/Qorder/data/999/2025/20115.mp4: [Errno 32] Broken pipe
+Traceback (most recent call last):
+  File "/Users/apple/Desktop/Qorder/.bin/src/routers/static_router.py", line 152, in _serve_static_file
+    self._stream_file(file_path, start, end)
+  File "/Users/apple/Desktop/Qorder/.bin/src/routers/static_router.py", line 235, in _stream_file
+    self.wfile.write(data)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+2026-07-30 22:51:36 [INFO] main: 数据库初始化完成
+2026-07-30 22:51:36 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-30 22:59:52 [ERROR] static_router: 读取文件失败 path=/Users/apple/Desktop/Qorder/data/666/2025/20117.mp4: [Errno 32] Broken pipe
+Traceback (most recent call last):
+  File "/Users/apple/Desktop/Qorder/.bin/src/routers/static_router.py", line 152, in _serve_static_file
+    self._stream_file(file_path, start, end)
+  File "/Users/apple/Desktop/Qorder/.bin/src/routers/static_router.py", line 235, in _stream_file
+    self.wfile.write(data)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+2026-07-30 23:00:26 [ERROR] static_router: 读取文件失败 path=/Users/apple/Desktop/Qorder/data/666/2025/20117.mp4: [Errno 32] Broken pipe
+Traceback (most recent call last):
+  File "/Users/apple/Desktop/Qorder/.bin/src/routers/static_router.py", line 152, in _serve_static_file
+    self._stream_file(file_path, start, end)
+  File "/Users/apple/Desktop/Qorder/.bin/src/routers/static_router.py", line 235, in _stream_file
+    self.wfile.write(data)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+2026-07-30 23:13:43 [INFO] main: 数据库初始化完成
+2026-07-30 23:13:43 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-30 23:18:58 [INFO] main: 数据库初始化完成
+2026-07-30 23:18:58 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-30 23:23:29 [INFO] main: 数据库初始化完成
+2026-07-30 23:23:29 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-30 23:24:20 [INFO] main: 数据库初始化完成
+2026-07-30 23:24:20 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-30 23:27:18 [INFO] main: 数据库初始化完成
+2026-07-30 23:27:18 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-30 23:34:37 [ERROR] static_router: 读取文件失败 path=/Users/apple/Desktop/Qorder/data/666/2025/20117.mp4: [Errno 32] Broken pipe
+Traceback (most recent call last):
+  File "/Users/apple/Desktop/Qorder/.bin/src/routers/static_router.py", line 152, in _serve_static_file
+    self._stream_file(file_path, start, end)
+  File "/Users/apple/Desktop/Qorder/.bin/src/routers/static_router.py", line 235, in _stream_file
+    self.wfile.write(data)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+2026-07-30 23:35:30 [ERROR] static_router: 读取文件失败 path=/Users/apple/Desktop/Qorder/data/666/2025/20117.mp4: [Errno 32] Broken pipe
+Traceback (most recent call last):
+  File "/Users/apple/Desktop/Qorder/.bin/src/routers/static_router.py", line 152, in _serve_static_file
+    self._stream_file(file_path, start, end)
+  File "/Users/apple/Desktop/Qorder/.bin/src/routers/static_router.py", line 235, in _stream_file
+    self.wfile.write(data)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe

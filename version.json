@@ -1,11 +1,17 @@
 {
-  "latest_version": "0.0.2",
+  "latest_version": "0.0.3",
   "versions": [
+    {
+      "version": "0.0.3",
+      "date": "2026-07-30",
+      "changelog": "### 新增\n- 首页首次引导：聚光灯遮罩高亮「编辑模式」按钮，提示上传密码\n- 手机扫码上传：局域网直传，支持批量选择照片和视频，自动识别拍摄日期",
+      "download_url": "https://gitee.com/cdgm/local-album-viewer/raw/main/.release/.bin.zip"
+    },
     {
       "version": "0.0.1",
       "date": "2026-07-29",
       "changelog": "### 新功能\n- 离线相册管理，数据完全本地存储，无需联网\n- 支持 JPG、PNG、GIF、WebP、HEIC、MP4 等多种格式\n- 自动读取照片 EXIF 拍摄日期，按年份智能分组\n- 自定义相册管理（创建、重命名、筛选、排序、折叠）\n- 原图无损保存，完整保留 EXIF 元数据\n- 缩略图快速预览，万张照片流畅不卡顿\n- 视频缩略图与在线播放\n- 批量操作（删除、打标签、清除标签）",
-      "download_url": ""
+      "download_url": "https://gitee.com/cdgm/local-album-viewer/raw/main/.release/.bin.zip"
     }
   ]
 }

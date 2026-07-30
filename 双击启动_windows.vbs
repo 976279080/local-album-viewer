@@ -1,5 +1,5 @@
-' 无联网相册 - Windows 启动脚本
-' 每次点击都重启服务，轮询端口后打开浏览器
+' Local Album Viewer - Windows Launcher
+' Auto-restart service, apply pending updates, then open browser
 
 Dim objShell, objFSO, objWMI, strBasePath, strPythonPath, strMainPath
 Dim strCmd, intReturn, i, bReady
@@ -7,58 +7,134 @@ Dim strCmd, intReturn, i, bReady
 Set objShell = CreateObject("WScript.Shell")
 Set objFSO = CreateObject("Scripting.FileSystemObject")
 
-' 获取脚本所在目录
+' Get script directory
 strBasePath = objFSO.GetParentFolderName(WScript.ScriptFullName)
 
-' main.py 路径
+' ============================================================
+' Apply pending update (.bin_update -> .bin) if exists
+' ============================================================
+Dim strPendingMarker, strBinDir, strBinUpdateDir, strBinBackupDir
+strPendingMarker = strBasePath & "\.pending_update"
+strBinDir        = strBasePath & "\.bin"
+strBinUpdateDir  = strBasePath & "\.bin_update"
+strBinBackupDir  = strBasePath & "\.bin_backup"
+
+If objFSO.FileExists(strPendingMarker) And objFSO.FolderExists(strBinUpdateDir) Then
+    On Error Resume Next
+    ' Kill old process first
+    Set objWMI = GetObject("winmgmts:\\.\root\cimv2")
+    Dim colP, objP
+    Set colP = objWMI.ExecQuery _
+        ("SELECT * FROM Win32_Process WHERE CommandLine LIKE '%main.py%'")
+    For Each objP In colP
+        objP.Terminate
+    Next
+    WScript.Sleep 500
+    On Error GoTo 0
+
+    On Error Resume Next
+    ' 1) Remove old backup
+    If objFSO.FolderExists(strBinBackupDir) Then
+        objFSO.DeleteFolder strBinBackupDir, True
+    End If
+    If Err.Number <> 0 Then Err.Clear
+
+    ' 2) Backup current .bin
+    Dim bBackupOK
+    bBackupOK = False
+    If objFSO.FolderExists(strBinDir) Then
+        objFSO.MoveFolder strBinDir, strBinBackupDir
+        If Err.Number = 0 Then
+            bBackupOK = True
+        Else
+            Err.Clear
+        End If
+    Else
+        bBackupOK = True
+    End If
+
+    ' 3) Move new version into place
+    If bBackupOK Then
+        objFSO.MoveFolder strBinUpdateDir, strBinDir
+        If Err.Number = 0 Then
+            ' Success, remove marker
+            objFSO.DeleteFile strPendingMarker, True
+        Else
+            ' Failed, rollback
+            Err.Clear
+            If objFSO.FolderExists(strBinUpdateDir) Then
+                On Error Resume Next
+                objFSO.DeleteFolder strBinUpdateDir, True
+                On Error GoTo 0
+            End If
+            If objFSO.FolderExists(strBinBackupDir) Then
+                On Error Resume Next
+                objFSO.MoveFolder strBinBackupDir, strBinDir
+                On Error GoTo 0
+            End If
+        End If
+    End If
+    On Error GoTo 0
+End If
+
+' main.py path (check after update applied)
 strMainPath = strBasePath & "\.bin\src\main.py"
 
-' 检查 main.py 是否存在
+' Check if main.py exists
 If Not objFSO.FileExists(strMainPath) Then
-    MsgBox "找不到 main.py！" & vbCrLf & _
-           "请确保 .bin\src\main.py 存在", vbCritical, "错误"
+    MsgBox "Cannot find main.py!" & vbCrLf & _
+           "Please ensure .bin\src\main.py exists", vbCritical, "Error"
     WScript.Quit 1
 End If
 
-' 优先使用 pythonw.exe（无窗口），其次 python.exe
+' Prefer pythonw.exe (no console window), fallback to python.exe
 strPythonPath = strBasePath & "\.bin\python\pythonw.exe"
 If Not objFSO.FileExists(strPythonPath) Then
     strPythonPath = strBasePath & "\.bin\python\python.exe"
     If Not objFSO.FileExists(strPythonPath) Then
-        MsgBox "找不到内嵌 Python 解释器！" & vbCrLf & _
-               "请将 Python 放入 .bin\python\ 目录", vbCritical, "错误"
+        MsgBox "Cannot find embedded Python!" & vbCrLf & _
+               "Please put Python into .bin\python\ directory", vbCritical, "Error"
         WScript.Quit 1
     End If
 End If
 
-' 隐藏不需要用户看到的文件/文件夹
+' ============================================================
+' Hide files that users don't need to see
+' ============================================================
 On Error Resume Next
+objShell.Run "cmd /c attrib +h """ & strBasePath & "\README.md""", 0, True
+objShell.Run "cmd /c attrib +h """ & strBasePath & "\version.json""", 0, True
 objShell.Run "cmd /c attrib +h """ & strBasePath & "\.bin""", 0, True
 objShell.Run "cmd /c attrib +h """ & strBasePath & "\.user_data""", 0, True
 objShell.Run "cmd /c attrib +h """ & strBasePath & "\.trae""", 0, True
-objShell.Run "cmd /c attrib +h """ & strBasePath & "\version.json""", 0, True
-objShell.Run "cmd /c attrib +h """ & strBasePath & "\tests""", 0, True
+objShell.Run "cmd /c attrib +h """ & strBasePath & "\.tests""", 0, True
+objShell.Run "cmd /c attrib +h """ & strBasePath & "\.pending_update""", 0, True
+objShell.Run "cmd /c attrib +h """ & strBasePath & "\.bin_update""", 0, True
+objShell.Run "cmd /c attrib +h """ & strBasePath & "\.bin_backup""", 0, True
+objShell.Run "cmd /c attrib +h """ & strBasePath & "\.gitignore""", 0, True
+objShell.Run "cmd /c attrib +h """ & strBasePath & "\.release""", 0, True
+objShell.Run "cmd /c attrib +h """ & strBasePath & "\generate_license.html""", 0, True
 On Error GoTo 0
 
-' 每次点击都重启服务：先杀掉占用 8089 端口的旧进程
+' Kill old process on port 8089
 On Error Resume Next
 Set objWMI = GetObject("winmgmts:\\.\root\cimv2")
 Dim colProcesses, objProcess
 Set colProcesses = objWMI.ExecQuery _
-    ("SELECT * FROM Win32_Process WHERE CommandLine LIKE '%main.py%' AND CommandLine LIKE '%Qorder%'")
+    ("SELECT * FROM Win32_Process WHERE CommandLine LIKE '%main.py%'")
 For Each objProcess In colProcesses
     objProcess.Terminate
 Next
 WScript.Sleep 300
 On Error GoTo 0
 
-' 构建命令行 - 直接启动 main.py
+' Build command line
 strCmd = """" & strPythonPath & """ """ & strMainPath & """"
 
-' 静默启动（窗口模式 = 0 隐藏，等待 = False 不等待）
+' Start silently (window mode = 0 hidden, wait = False)
 intReturn = objShell.Run(strCmd, 0, False)
 
-' 轮询端口（每200ms检查一次，最多等10秒）
+' Poll port (check every 200ms, max 10 seconds)
 bReady = False
 For i = 1 To 50
     WScript.Sleep 200
@@ -75,11 +151,11 @@ For i = 1 To 50
     On Error GoTo 0
 Next
 
-' 打开浏览器
+' Open browser
 If bReady Then
-    objShell.Run "cmd /c start http://localhost:8089"
+    objShell.Run "http://localhost:8089", 1, False
 Else
-    MsgBox "服务启动超时，请检查日志", vbExclamation, "提示"
+    MsgBox "Service startup timeout, please check the log", vbExclamation, "Warning"
 End If
 
 Set objFSO = Nothing

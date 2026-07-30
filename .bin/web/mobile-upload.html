@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <title>手机上传 - 无联网相册</title>
+    <link rel="stylesheet" href="mobile-upload.css">
+    <script src="config.js"></script>
+    <script src="exifr.js"></script>
+    <script src="media-processor.js"></script>
+</head>
+<body>
+    <div class="m-page">
+        <header class="m-header">
+            <div class="m-title">上传到电脑</div>
+            <div class="m-status" id="mStatus">连接成功 · 同一局域网直传</div>
+        </header>
+
+        <div class="m-body">
+            <div class="m-form">
+                <div class="m-field">
+                    <label class="m-label">选择相册</label>
+                    <div class="m-album">
+                        <select id="mAlbumSelect" class="m-select">
+                            <option value="">加载中...</option>
+                        </select>
+                        <div class="m-or">或</div>
+                        <input type="text" id="mNewAlbum" class="m-input" placeholder="创建新相册（输入名称）" maxlength="20">
+                    </div>
+                </div>
+
+                <div class="m-field">
+                    <label class="m-label">选择照片 / 视频</label>
+                    <div class="m-dropzone" id="mDropzone">
+                        <div class="m-ic">
+                            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="17 8 12 3 7 8"></polyline>
+                                <line x1="12" y1="3" x2="12" y2="15"></line>
+                            </svg>
+                        </div>
+                        <div class="m-dz-text">点击选择照片或视频</div>
+                        <div class="m-dz-sub">从相册中选择图片或视频，支持批量选择</div>
+                        <input type="file" id="mFileInput" multiple style="display:none">
+                    </div>
+                    <div class="m-file-list" id="mFileList"></div>
+                </div>
+
+                <button class="m-submit" id="mSubmit" disabled>
+                    <span id="mSubmitText">开始上传</span>
+                </button>
+
+                <div class="m-progress" id="mProgress" style="display:none;">
+                    <div class="m-prog-row">
+                        <span id="mProgStage">准备上传...</span>
+                        <span id="mProgPercent">0%</span>
+                    </div>
+                    <div class="m-prog-bar">
+                        <div class="m-prog-fill" id="mProgFill"></div>
+                    </div>
+                    <div class="m-prog-detail" id="mProgDetail"></div>
+                </div>
+
+                <div class="m-result" id="mResult" style="display:none;"></div>
+            </div>
+
+            <div class="m-foot">
+                <p>照片仅通过局域网传送到电脑，不会上传到任何云端服务器。</p>
+                <p>完成后可在电脑「首页」查看已上传的照片。</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    (function () {
+        'use strict';
+
+        // 从 URL 读取 token
+        function getQuery(k) {
+            var s = location.search.substring(1);
+            var arr = s.split('&');
+            for (var i = 0; i < arr.length; i++) {
+                var p = arr[i].split('=');
+                if (decodeURIComponent(p[0]) === k) return decodeURIComponent(p[1] || '');
+            }
+            return '';
+        }
+
+        var token = getQuery('token');
+        if (!token) {
+            document.getElementById('mStatus').textContent = '⚠️ 缺少认证信息，请重新在电脑上扫码获取';
+            document.getElementById('mStatus').className = 'm-status m-status-warn';
+        }
+
+        var XHR_TIMEOUT_MS = 300000;
+
+        var albumSelect = document.getElementById('mAlbumSelect');
+        var newAlbumInput = document.getElementById('mNewAlbum');
+        var dropzone = document.getElementById('mDropzone');
+        var fileInput = document.getElementById('mFileInput');
+        var fileListEl = document.getElementById('mFileList');
+        var submitBtn = document.getElementById('mSubmit');
+        var submitText = document.getElementById('mSubmitText');
+        var progressEl = document.getElementById('mProgress');
+        var progStage = document.getElementById('mProgStage');
+        var progPercent = document.getElementById('mProgPercent');
+        var progFill = document.getElementById('mProgFill');
+        var progDetail = document.getElementById('mProgDetail');
+        var resultEl = document.getElementById('mResult');
+
+        var selectedFiles = [];
+        var isUploading = false;
+
+        // ========== 加载相册列表 ==========
+        function loadAlbums() {
+            fetch('/api/summary').then(function (r) { return r.json(); }).then(function (d) {
+                var members = (d && d.members) ? d.members : {};
+                albumSelect.innerHTML = '<option value="">选择已有相册...</option>'
+                    + Object.values(members).map(function (a) {
+                        return '<option value="' + escapeAttr(a.name) + '">' + escapeHtml(a.name) + '</option>';
+                    }).join('');
+                albumSelect.disabled = false;
+            }).catch(function () {
+                albumSelect.innerHTML = '<option value="">（无法获取相册列表）</option>';
+            });
+        }
+
+        function escapeHtml(s) {
+            return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+                return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
+            });
+        }
+        function escapeAttr(s) { return escapeHtml(s); }
+
+        function toast(msg, type) {
+            var el = document.createElement('div');
+            el.className = 'm-toast m-toast-' + (type || 'info');
+            el.textContent = msg;
+            document.body.appendChild(el);
+            setTimeout(function () { el.classList.add('show'); }, 10);
+            setTimeout(function () {
+                el.classList.remove('show');
+                setTimeout(function () { el.remove(); }, 400);
+            }, 2200);
+        }
+
+        // ========== 文件选择 ==========
+        dropzone.addEventListener('click', function () {
+            if (isUploading) return;
+            fileInput.click();
+        });
+        fileInput.addEventListener('change', function () {
+            addFiles(fileInput.files);
+            fileInput.value = '';
+        });
+
+        function addFiles(files) {
+            if (!files) return;
+            for (var i = 0; i < files.length; i++) {
+                selectedFiles.push(files[i]);
+            }
+            renderFileList();
+            updateSubmitBtn();
+        }
+
+        function renderFileList() {
+            if (selectedFiles.length === 0) {
+                fileListEl.innerHTML = '';
+                return;
+            }
+            var itemsHtml = selectedFiles.map(function (f, idx) {
+                var size = formatSize(f.size);
+                var isVideo = f.type && f.type.startsWith('video');
+                return '<div class="m-file-item">' +
+                    '<div class="m-fi-icon">' + (isVideo ? '🎬' : '🖼️') + '</div>' +
+                    '<div class="m-fi-body">' +
+                        '<div class="m-fi-name">' + escapeHtml(f.name) + '</div>' +
+                        '<div class="m-fi-meta">' + size + (f.type ? ' · ' + f.type : '') + '</div>' +
+                    '</div>' +
+                    '<button type="button" class="m-fi-del" data-idx="' + idx + '">×</button>' +
+                '</div>';
+            }).join('');
+            fileListEl.innerHTML = '<div class="m-fi-header">已选 ' + selectedFiles.length + ' 个文件</div>' + itemsHtml;
+
+            fileListEl.querySelectorAll('.m-fi-del').forEach(function (b) {
+                b.addEventListener('click', function () {
+                    if (isUploading) return;
+                    var i = parseInt(b.getAttribute('data-idx'), 10);
+                    selectedFiles.splice(i, 1);
+                    renderFileList();
+                    updateSubmitBtn();
+                });
+            });
+        }
+
+        function formatSize(n) {
+            if (!n) return '0 B';
+            var units = ['B', 'KB', 'MB', 'GB'];
+            var i = 0;
+            while (n >= 1024 && i < units.length - 1) { n /= 1024; i++; }
+            return n.toFixed(n < 10 && i > 0 ? 1 : 0) + ' ' + units[i];
+        }
+
+        function updateSubmitBtn() {
+            var hasFiles = selectedFiles.length > 0;
+            var hasAlbum = !!(albumSelect.value || (newAlbumInput.value || '').trim());
+            submitBtn.disabled = !hasFiles || !hasAlbum || isUploading || !token;
+        }
+
+        albumSelect.addEventListener('change', function () {
+            if (this.value) newAlbumInput.value = '';
+            updateSubmitBtn();
+        });
+        newAlbumInput.addEventListener('input', function () {
+            if (this.value.trim()) albumSelect.value = '';
+            updateSubmitBtn();
+        });
+
+        // ========== 上传 ==========
+        submitBtn.addEventListener('click', doUpload);
+
+        async function doUpload() {
+            if (isUploading || submitBtn.disabled) return;
+            if (!token) { toast('缺少认证，请重新扫码', 'error'); return; }
+            if (selectedFiles.length === 0) { toast('请先选择文件', 'warn'); return; }
+
+            var album_name = albumSelect.value || '';
+            var new_album_name = (newAlbumInput.value || '').trim();
+            if (!album_name && !new_album_name) { toast('请选择或输入相册名称', 'warn'); return; }
+
+            isUploading = true;
+            submitBtn.disabled = true;
+            submitText.textContent = '上传中...';
+            progressEl.style.display = '';
+            resultEl.style.display = 'none';
+            progFill.style.width = '0%';
+            progPercent.textContent = '0%';
+
+            var totalSuccess = 0, totalFail = 0, totalDup = 0;
+
+            // 逐个上传（移动端简单策略，避免并发太高）
+            for (var i = 0; i < selectedFiles.length; i++) {
+                var f = selectedFiles[i];
+                progStage.textContent = '处理中 ' + (i + 1) + '/' + selectedFiles.length;
+                progDetail.textContent = f.name;
+
+                try {
+                    var r = await uploadOne(f, album_name, new_album_name, i, selectedFiles.length);
+                    if (r && r.duplicate) totalDup++;
+                    else totalSuccess++;
+                } catch (e) {
+                    totalFail++;
+                    progDetail.textContent = f.name + ' 失败：' + (e.message || '');
+                    await sleep(300);
+                }
+
+                var pct = Math.round(((i + 1) / selectedFiles.length) * 100);
+                progFill.style.width = pct + '%';
+                progPercent.textContent = pct + '%';
+            }
+
+            // 完成
+            isUploading = false;
+            submitBtn.disabled = false;
+            submitText.textContent = '开始上传';
+            progStage.textContent = '上传完成';
+            progDetail.textContent = '';
+
+            var html = '<div class="m-result-card">';
+            if (totalSuccess > 0) html += '<div class="m-ok">✔ 成功上传 ' + totalSuccess + ' 张</div>';
+            if (totalDup > 0) html += '<div class="m-dup">⚠ 跳过重复照片 ' + totalDup + ' 张</div>';
+            if (totalFail > 0) html += '<div class="m-fail">✗ 失败 ' + totalFail + ' 张</div>';
+            html += '<div class="m-result-tip">可在电脑端首页查看新上传的照片</div></div>';
+            resultEl.innerHTML = html;
+            resultEl.style.display = '';
+
+            // 成功后清空已选文件
+            selectedFiles = [];
+            renderFileList();
+            updateSubmitBtn();
+        }
+
+        async function uploadOne(file, album_name, new_album_name, idx, totalCount) {
+            // 1. 用 MediaProcessor 处理文件（生成缩略图、提取 EXIF 拍摄日期、视频截帧）
+            var processed;
+            try {
+                processed = await MediaProcessor.processFile(file);
+                processed.file = file;
+            } catch (e) {
+                // 处理失败，降级为直接上传原始文件
+                processed = { file: file, width: 0, height: 0, createTime: '', thumbnailBlob: null };
+            }
+
+            // 2. 构造 FormData（与电脑端 upload.js 字段一致）
+            var uploadFile = processed.convertedFile || processed.file;
+            var fd = new FormData();
+            fd.append('album_name', album_name || '');
+            fd.append('new_album_name', new_album_name || '');
+            fd.append('count', String(totalCount));
+            fd.append('index', String(idx));
+            fd.append('file', uploadFile);
+            fd.append('width', processed.width || 0);
+            fd.append('height', processed.height || 0);
+            fd.append('create_time', processed.createTime || '');
+            fd.append('size', uploadFile.size || 0);
+            if (processed.thumbnailBlob) {
+                fd.append('thumbnail', processed.thumbnailBlob, 'thumb.webp');
+            }
+
+            // 3. 上传
+            progStage.textContent = '上传中 ' + (idx + 1) + '/' + totalCount;
+
+            return new Promise(function (resolve, reject) {
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', '/api/upload');
+                xhr.setRequestHeader('X-Auth', token);
+                xhr.timeout = XHR_TIMEOUT_MS;
+
+                xhr.onload = function () {
+                    if (xhr.status === 200) {
+                        try { resolve(JSON.parse(xhr.responseText)); }
+                        catch (e) { resolve({}); }
+                    } else if (xhr.status === 401) {
+                        reject(new Error('认证已失效，请重新扫码'));
+                    } else {
+                        var msg = '上传失败';
+                        try {
+                            var d = JSON.parse(xhr.responseText);
+                            if (d.error) msg = d.error;
+                        } catch (e) {}
+                        reject(new Error(msg));
+                    }
+                };
+                xhr.onerror = function () { reject(new Error('网络错误，检查手机电脑是否同一局域网')); };
+                xhr.ontimeout = function () { reject(new Error('上传超时，视频可能过大')); };
+                xhr.onabort = function () { reject(new Error('取消')); };
+
+                xhr.send(fd);
+            });
+        }
+
+        function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+        // 初始化
+        loadAlbums();
+        updateSubmitBtn();
+    })();
+    </script>
+</body>
+</html>
