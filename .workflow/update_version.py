@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """CI 流水线中更新 version.json 并 push 回仓库
 
-读取环境变量 GITEE_TAG（如 v0.0.4），更新 version.json 的 latest_version
+读取环境变量 GITEE_BRANCH（tag 触发时为 v0.0.4），更新 version.json 的 latest_version
 和 versions 数组，然后 git commit + push 回 main 分支。
 
 需在 Gitee Go 流水线设置中配置 GITEE_TOKEN 环境变量
@@ -23,9 +23,9 @@ VERSION_FILE = ROOT / 'version.json'
 
 
 def main():
-    tag = os.environ.get('GITEE_TAG', '').strip()
+    tag = os.environ.get('GITEE_BRANCH', '').strip()
     if not tag:
-        print('GITEE_TAG 环境变量为空，跳过 version.json 更新')
+        print('GITEE_BRANCH 环境变量为空，跳过 version.json 更新')
         return
 
     # v0.0.4 → 0.0.4

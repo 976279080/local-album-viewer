@@ -44,9 +44,9 @@ stages:
       - step: release@gitee
         name: release_gitee
         displayName: Gitee Release
-        # tagName 使用触发的 tag（如 v0.0.4），不存在会基于当前 commit 创建
-        tagName: ${GITEE_TAG}
-        releaseName: ${GITEE_TAG}
+        # tagName 使用触发的 tag（如 v0.0.4），Gitee Go tag 触发时 GITEE_BRANCH 即为 tag 名
+        tagName: ${GITEE_BRANCH}
+        releaseName: ${GITEE_BRANCH}
         description: 自动发布
         # 引用上一阶段的制品
         upstreamArtifact:
