@@ -17,11 +17,10 @@ rm -f "$SCRIPT_DIR/.release/.bin.zip" 2>/dev/null
 
 # ============================================================
 # 二、白名单隐藏：根目录只保留：
-#   ✅ 首次单击启动_mac.command / 双击启动_windows.vbs / data
-#   其他所有文件/文件夹一律隐藏（包括 .user_data / .bin / .release / version.json / README.md / .git 等）
+#   ✅ 首次单击启动_mac.command / data
+#   其他所有文件/文件夹一律隐藏（包括 双击启动_windows.vbs / .user_data / .bin / .release / version.json / README.md / .git 等）
 # ============================================================
 MAC_LAUNCHER="首次单击启动_mac.command"
-WIN_LAUNCHER="双击启动_windows.vbs"
 DATA_DIR_NAME="data"
 
 for item in "$SCRIPT_DIR"/* "$SCRIPT_DIR"/.*; do
@@ -32,19 +31,12 @@ for item in "$SCRIPT_DIR"/* "$SCRIPT_DIR"/.*; do
     [ -e "$item" ] || continue
     name="$(basename "$item")"
 
-    # 白名单判断
-    case "$name" in
-        "$MAC_LAUNCHER"|"$WIN_LAUNCHER")
-            # 启动脚本确保可见
-            chflags nohidden "$item" 2>/dev/null
-            continue
-            ;;
-        "$DATA_DIR_NAME")
-            # data 目录保持可见
-            chflags nohidden "$item" 2>/dev/null
-            continue
-            ;;
-    esac
+    # 白名单判断（用字符串比较，避免 case 模式匹配的歧义）
+    # mac 上只保留 mac 启动器和 data 目录；windows 启动器(.vbs)在 mac 上隐藏
+    if [ "$name" = "$MAC_LAUNCHER" ] || [ "$name" = "$DATA_DIR_NAME" ]; then
+        chflags nohidden "$item" 2>/dev/null
+        continue
+    fi
     # 其它一律隐藏
     chflags hidden "$item" 2>/dev/null
 done
@@ -52,7 +44,7 @@ done
 # 每次点击都重启服务：先杀掉旧进程（8089 和备用 8090）
 lsof -ti:8089 | xargs kill -9 2>/dev/null
 lsof -ti:8090 | xargs kill -9 2>/dev/null
-sleep 0.3
+sleep 0.1
 
 # 选择可用的 python3：优先用户安装的（Homebrew 等），最后回退到 /usr/bin
 for PY in /usr/local/bin/python3 /opt/homebrew/bin/python3 "$HOME/.pyenv/shims/python3" /usr/bin/python3; do
@@ -68,15 +60,21 @@ nohup "$PY" "$SCRIPT_DIR/.bin/src/main.py" > "$LOG_FILE" 2>&1 &
 disown %1 2>/dev/null
 
 # 轮询端口，就绪后打开浏览器（8089 端口优先，备用 8090）
+# 用 /api/summary 作为就绪探针，确保服务完整就绪后再打开浏览器
 for p in 8089 8090; do
+    first=1
     for i in $(seq 1 50); do
-        if curl -sfS "http://localhost:$p/" > /dev/null 2>&1; then
+        if [ "$first" = "1" ]; then
+            first=0
+        else
+            sleep 0.15
+        fi
+        if curl -sfS "http://localhost:$p/api/summary" > /dev/null 2>&1; then
             open "http://localhost:$p"
             # 关闭终端窗口（只关当前启动这个）
             osascript -e 'tell application "Terminal" to close (every window whose name contains "首次单击启动_mac")' > /dev/null 2>&1 &
             exit 0
         fi
-        sleep 0.15
     done
 done
 

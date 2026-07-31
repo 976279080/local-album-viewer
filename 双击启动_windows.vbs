@@ -21,8 +21,8 @@ On Error GoTo 0
 
 ' ============================================================
 ' 二、白名单隐藏：根目录只保留
-'   ✅ 首次单击启动_mac.command / 双击启动_windows.vbs / data
-'   其他所有文件/文件夹一律隐藏（包括 .user_data / .bin / .release / version.json / README.md / .git 等）
+'   ✅ 双击启动_windows.vbs / data
+'   其他所有文件/文件夹一律隐藏（包括 首次单击启动_mac.command / .user_data / .bin / .release / version.json / README.md / .git 等）
 ' ============================================================
 Dim HIDDEN_ATTR, STR_COMP_IGNORE_CASE
 HIDDEN_ATTR = 2  ' Windows FileAttribute: Hidden = 2
@@ -37,16 +37,13 @@ On Error GoTo 0
 Dim objFolder, colItems, objItem, strName, bKeep
 Set objFolder = objFSO.GetFolder(strBasePath)
 
-' Files: keep launchers (.vbs / .command), hide others
+' Files: keep only .vbs launcher on Windows, hide others (including .command)
 Set colItems = objFolder.Files
 For Each objItem In colItems
     strName = objItem.Name
     bKeep = False
     If Len(strName) >= 4 Then
         If StrComp(Right(strName, 4), ".vbs", STR_COMP_IGNORE_CASE) = 0 Then bKeep = True
-    End If
-    If Len(strName) >= 8 Then
-        If StrComp(Right(strName, 8), ".command", STR_COMP_IGNORE_CASE) = 0 Then bKeep = True
     End If
     If bKeep Then
         objItem.Attributes = objItem.Attributes And Not HIDDEN_ATTR
@@ -96,7 +93,7 @@ Set colProcesses = objWMI.ExecQuery _
 For Each objProcess In colProcesses
     objProcess.Terminate
 Next
-WScript.Sleep 300
+WScript.Sleep 100
 On Error GoTo 0
 
 ' Build command line
@@ -105,14 +102,14 @@ strCmd = """" & strPythonPath & """ """ & strMainPath & """"
 ' Start silently (window mode = 0 hidden, wait = False)
 intReturn = objShell.Run(strCmd, 0, False)
 
-' Poll port (check every 200ms, max 10 seconds)
+' Poll port (first try immediately, then every 100ms, max 10 seconds)
 bReady = False
-For i = 1 To 50
-    WScript.Sleep 200
+For i = 1 To 100
+    If i > 1 Then WScript.Sleep 100
     Dim http
     On Error Resume Next
     Set http = CreateObject("WinHttp.WinHttpRequest.5.1")
-    http.SetTimeouts 500, 500, 500, 500
+    http.SetTimeouts 300, 300, 300, 300
     http.Open "GET", "http://localhost:8089/api/summary", False
     http.Send
     If Err.Number = 0 And http.Status = 200 Then

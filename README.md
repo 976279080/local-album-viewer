@@ -59,6 +59,8 @@
 
 启动后浏览器会自动打开相册页面（默认地址 `http://localhost:8089`）。
 
+> 每个平台只显示对应的启动文件：mac 下自动隐藏 `双击启动_windows.vbs`，Windows 下自动隐藏 `首次单击启动_mac.command`，避免误点另一个平台的脚本。
+
 ### 为什么用 `.command` 和 `.vbs` 文件启动？
 
 很多用户看到这两个文件可能会犹豫要不要双击——这是正常的安全意识。这里说明一下它们的用途，打消顾虑：
@@ -97,12 +99,12 @@ cd 项目根目录
 │   ├── web/               #   前端资源（HTML/CSS/JS）
 │   │   └── modules/       #     Vue 模块化业务代码
 │   └── python/            #   Windows 内置 Python 运行时
+├── 首次单击启动_mac.command # macOS 启动（Windows 下自动隐藏）
+├── 双击启动_windows.vbs    # Windows 启动（mac 下自动隐藏）
 ├── data/                  # 照片 / 视频源文件目录（按相册分子目录）
 ├── .user_data/            # 用户私有数据（默认隐藏）
 │   ├── previews/          #   缩略图缓存
 │   └── db/                #   SQLite 数据库文件
-├── 首次单击启动_mac.command # macOS 一键启动
-└── 双击启动_windows.vbs    # Windows 一键启动
 ```
 
 ---
