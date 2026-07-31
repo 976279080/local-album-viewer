@@ -1,6 +1,12 @@
 {
-  "latest_version": "0.0.3",
+  "latest_version": "0.0.4",
   "versions": [
+    {
+      "version": "0.0.4",
+      "date": "2026-07-31",
+      "changelog": "### 新增\n- 检查更新：可检查更新（不会影响用户的照片数据）",
+      "download_url": "https://gitee.com/cdgm/local-album-viewer/raw/main/.release/.bin.zip"
+    },
     {
       "version": "0.0.3",
       "date": "2026-07-30",

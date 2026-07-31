@@ -32,9 +32,22 @@
     async function checkUpdate() {
         var btn = document.getElementById('checkUpdateBtn');
         if (!btn) return;
-        var originalHTML = btn.innerHTML;
+        var originalDisabled = btn.disabled;
+        var originalTextEl = btn.querySelector('.update-btn-text');
+        if (!originalTextEl) {
+            // 按钮内容没包一层 <span class="update-btn-text">，做一次简单的兼容：将文字包裹一下，避免
+            // finally 恢复 btn.innerHTML 时把 #updateBadge 的状态也覆盖掉。
+            var cloneBadge = document.getElementById('updateBadge');
+            var badgeHtml = cloneBadge ? cloneBadge.outerHTML : '';
+            // 提取文字（不含红点）并重新写入，使得以后 btn.firstChild 或 .update-btn-text 能访问
+            var txt = (btn.textContent || '检查更新').replace(/[●○]/g, '').trim() || '检查更新';
+            btn.innerHTML = '<span class="update-btn-text">' + txt + '</span> ' + badgeHtml;
+            originalTextEl = btn.querySelector('.update-btn-text');
+        }
+        var loadingHtml =
+            '加载中...';
         btn.disabled = true;
-        btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-9-9c2.5 0 4.8 1 6.5 2.6"/><polyline points="21 4 21 10 15 10"/></svg>加载中...';
+        if (originalTextEl) originalTextEl.innerHTML = loadingHtml;
 
         try {
             var res = await fetch('/api/version/list');
@@ -43,12 +56,45 @@
                 _deps.showToast('获取版本信息失败，请确认网络正常', 'error');
                 return;
             }
+            // 手动检查 = 用户已经看到版本信息了，本次生命周期不要再亮红点（防止 initAutoCheck 晚回来覆盖）
+            _snoozeUpdateDot();
             showVersionModal(data);
         } catch (e) {
             _deps.showToast('检查更新失败，请确认网络正常', 'error');
         } finally {
-            btn.disabled = false;
-            btn.innerHTML = originalHTML;
+            btn.disabled = originalDisabled;
+            if (originalTextEl) originalTextEl.textContent = '检查更新';
+            // Snooze 之后红点不能再亮；其它情况保持当前状态即可，不再额外修改
+            if (_updateDotSnoozed) _setUpdateDot(false);
+        }
+    }
+
+    // —— 内部 Helper：红点管理（需求1：小红点 = 稳定版最新比本地高） ——
+    // 用户一旦手动点过「检查更新」或打开过版本弹窗，本次页面生命周期内自动检查就不再亮起红点，
+    // 避免和 showVersionModal 里主动「清红点」的逻辑产生竞态（initAutoCheck 异步返回后把红点又覆盖开）。
+    var _updateDotSnoozed = false;
+    function _getBadgeEl() {
+        return document.getElementById('updateBadge');
+    }
+    function _snoozeUpdateDot() { _updateDotSnoozed = true; }
+    function _setUpdateDot(show) {
+        // show=true 时如果已经打了 snooze 标记，就不要再亮红点（防止异步覆盖用户操作）
+        if (show && _updateDotSnoozed) return;
+        // 新 HTML：优先操作 upload.html 里的静态 <span id="updateBadge">
+        var badge = _getBadgeEl();
+        if (badge) {
+            badge.style.display = show ? '' : 'none';
+            return;
+        }
+        // fallback：没 id=updateBadge 的旧页面，用字符串替换插进 innerHTML
+        var btn = document.getElementById('checkUpdateBtn');
+        if (!btn) return;
+        if (show) {
+            if (btn.innerHTML.indexOf('●') === -1) {
+                btn.innerHTML = (btn.innerHTML || '检查更新').replace(/检查更新/, '检查更新 <span style="color:#ef4444;">●</span>');
+            }
+        } else {
+            btn.innerHTML = (btn.innerHTML || '检查更新').replace(/\s*<span[^>]*>●<\/span>/g, '');
         }
     }
 
@@ -59,15 +105,18 @@
         var localVersion = data.local_version || '未知';
         var versions = data.versions || [];
         var latestVersion = data.latest_version || '';
+        var latestStableVersion = data.latest_stable_version || latestVersion || '';
         var esc = _deps.escapeHtml;
 
         var versionsHtml = '';
         if (versions.length === 0) {
             versionsHtml = '<div class="version-empty">暂无版本信息</div>';
         } else {
-            versionsHtml = versions.map(function (v) {
+            versionsHtml = versions.map(function (v, idx) {
                 var isCurrent = v.version === localVersion;
-                var changelogHtml = (v.changelog || '暂无更新说明')
+                var isStable = v.is_stable !== false;   // 缺省视为 true（后端老版本可能没带字段）
+                var changelog = v.changelog || '暂无更新说明';
+                var changelogHtml = changelog
                     .replace(/&/g, '&amp;')
                     .replace(/</g, '&lt;')
                     .replace(/>/g, '&gt;')
@@ -76,6 +125,12 @@
                 var actionHtml = '';
                 if (isCurrent) {
                     actionHtml = '<span class="version-current-tag">当前版本</span>';
+                } else if (!isStable) {
+                    // 需求2：只有稳定版才能更新，非稳定版按钮禁用并提示
+                    actionHtml =
+                        '<button class="version-update-btn" disabled title="非稳定版，暂不开放更新" style="opacity:0.45;cursor:not-allowed;">' +
+                        '仅限稳定版更新' +
+                        '</button>';
                 } else if (v.download_url) {
                     actionHtml =
                         '<button class="version-update-btn" ' +
@@ -85,20 +140,33 @@
                 } else {
                     actionHtml = '<span class="version-no-download">暂无下载地址</span>';
                 }
+                // 非稳定版标签角标
+                var tagHtml = '';
+                if (!isStable) {
+                    tagHtml = '<span class="version-tag-unstable" style="display:inline-block;margin-left:6px;padding:1px 8px;font-size:11px;border-radius:10px;background:#fef3c7;color:#92400e;border:1px solid #fcd34d;vertical-align:middle;">测试版</span>';
+                }
+                var itemId = 'v-changelog-' + idx;
                 return (
                     '<div class="version-item' + (isCurrent ? ' current' : '') + '">' +
                         '<div class="version-item-header">' +
                             '<span class="version-number">v' + esc(v.version) + '</span>' +
+                            tagHtml +
                             '<span class="version-date">' + esc(v.date || '') + '</span>' +
                             actionHtml +
                         '</div>' +
-                        '<div class="version-changelog">' + changelogHtml + '</div>' +
+                        // 需求3：更新说明最多 2 行，超出折叠 + 展开/收起
+                        '<div class="changelog-wrap" style="margin-top:8px;">' +
+                            '<div id="' + itemId + '" class="changelog-text version-changelog" style="display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;line-height:1.6;">' +
+                                changelogHtml +
+                            '</div>' +
+                            '<button class="changelog-toggle" data-for="' + itemId + '" style="display:none;margin-top:4px;padding:2px 0;border:0;background:none;color:#3b82f6;font-size:12px;cursor:pointer;">显示更多</button>' +
+                        '</div>' +
                     '</div>'
                 );
             }).join('');
         }
 
-        var hasUpdate = latestVersion && latestVersion !== localVersion;
+        var hasUpdate = latestStableVersion && latestStableVersion !== localVersion;
 
         var modal = document.createElement('div');
         modal.className = 'version-modal';
@@ -112,9 +180,8 @@
                 '</div>' +
                 '<div class="version-modal-current">' +
                     '当前版本：<span class="version-current-badge">v' + esc(localVersion) + '</span>' +
-                    (hasUpdate ? '<span class="version-new-badge">有新版本 v' + esc(latestVersion) + '</span>' : '<span class="version-latest-badge">已是最新</span>') +
+                    (hasUpdate ? '<span class="version-new-badge">有新版本 v' + esc(latestStableVersion) + '</span>' : '<span class="version-latest-badge">已是最新</span>') +
                 '</div>' +
-                '<div class="version-modal-tip">下载更新包后将自动重启并应用（旧版本会备份，可手动回退）</div>' +
                 '<div class="version-modal-list">' + versionsHtml + '</div>' +
             '</div>';
 
@@ -122,6 +189,43 @@
 
         modal.querySelector('.version-modal-mask').onclick = function () { modal.remove(); };
         modal.querySelector('.version-modal-close').onclick = function () { modal.remove(); };
+
+        // 需求3：每个 changelog 是否真的超过 2 行，超过才显示「显示更多」按钮
+        var toggles = modal.querySelectorAll('.changelog-toggle');
+        for (var ti = 0; ti < toggles.length; ti++) {
+            (function (btn) {
+                var forId = btn.getAttribute('data-for');
+                var el = forId ? document.getElementById(forId) : null;
+                if (!el) return;
+                if (el.scrollHeight > el.clientHeight + 1) {
+                    btn.style.display = '';
+                }
+                btn.onclick = function () {
+                    var expanded = el.getAttribute('data-expanded') === '1';
+                    if (expanded) {
+                        // 收起：恢复 line-clamp 2 行
+                        el.style.display = '-webkit-box';
+                        el.style.webkitBoxOrient = 'vertical';
+                        el.style.webkitLineClamp = '2';
+                        el.style.overflow = 'hidden';
+                        el.setAttribute('data-expanded', '0');
+                        btn.textContent = '显示更多';
+                    } else {
+                        // 展开：移除 line-clamp
+                        el.style.display = '';
+                        el.style.webkitBoxOrient = '';
+                        el.style.webkitLineClamp = '';
+                        el.style.overflow = '';
+                        el.setAttribute('data-expanded', '1');
+                        btn.textContent = '收起';
+                    }
+                };
+            })(toggles[ti]);
+        }
+
+        // 需求1：用户已手动打开版本弹窗 -> 清掉红点（不管更不更新），并打 snooze 标记防止 initAutoCheck 覆盖
+        _snoozeUpdateDot();
+        _setUpdateDot(false);
 
         var updateBtns = modal.querySelectorAll('.version-update-btn');
         for (var i = 0; i < updateBtns.length; i++) {
@@ -241,8 +345,7 @@
                     esc(opts.prepareMsg || '正在重启服务并应用更新...') +
                 '</div>' +
                 '<div style="display:flex;gap:10px;justify-content:center;">' +
-                    '<button class="version-update-btn" id="restartCancelBtn" style="padding:8px 16px;border:1px solid #d1d5db;border-radius:8px;background:white;cursor:pointer;color:#374151;">取消</button>' +
-                    '<button class="version-update-btn" id="restartRefreshBtn" style="padding:8px 18px;border:none;border-radius:8px;background:#10b981;color:white;cursor:pointer;">立即刷新</button>' +
+                    '<button id="restartRefreshBtn" style="display:none;padding:8px 18px;border:0;border-radius:6px;background:#10b981;color:#fff;cursor:pointer;font-size:14px;">立即刷新</button>' +
                 '</div>' +
             '</div>';
         document.body.appendChild(m);
@@ -251,13 +354,11 @@
         var countdownEl = document.getElementById('restartCountdown');
         var msgEl = document.getElementById('restartMsg');
         var titleEl = document.getElementById('restartModalTitle');
-        var cancelBtn = document.getElementById('restartCancelBtn');
         var refreshBtn = document.getElementById('restartRefreshBtn');
         var CIRC = 364.42;
         function close() { try { m.remove(); } catch (_) {} }
 
-        cancelBtn.onclick = function () { close(); };
-        refreshBtn.onclick = function () { location.reload(true); };
+        if (refreshBtn) refreshBtn.onclick = function () { location.reload(true); };
         m.querySelector('.version-modal-mask').onclick = function () { /* 不允许点遮罩关闭 */ };
 
         var startTime = Date.now();
@@ -369,18 +470,16 @@
 
     function initAutoCheck() {
         // 静默检查：如果有更新，在按钮上加个红点
+        // 需求1：红点判断以「稳定通道最新版本」为依据
         try {
             fetch('/api/version/list', { cache: 'no-store' })
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
                     if (!data || data.error) return;
                     var local = data.local_version || '';
-                    var latest = data.latest_version || '';
-                    if (latest && local && latest !== local) {
-                        var btn = document.getElementById('checkUpdateBtn');
-                        if (btn && btn.innerHTML.indexOf('●') === -1) {
-                            btn.innerHTML = (btn.innerHTML || '检查更新').replace(/检查更新/, '检查更新 <span style="color:#ef4444;">●</span>');
-                        }
+                    var latestStable = data.latest_stable_version || data.latest_version || '';
+                    if (latestStable && local && latestStable !== local) {
+                        _setUpdateDot(true);
                     }
                 })
                 .catch(function () { /* 静默忽略 */ });

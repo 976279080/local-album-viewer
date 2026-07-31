@@ -11,11 +11,42 @@ xattr -dr com.apple.quarantine "$0" 2>/dev/null
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # ============================================================
-# 一、隐藏不需要用户看到的文件/文件夹
+# 一、清理无用文件（只删这一个：.release/.bin.zip 下载后解压完就无用
 # ============================================================
-# 点号开头的文件 macOS 默认已隐藏，这里处理非点开头和更新相关目录
-for f in README.md version.json .user_data .trae .tests .pending_update .bin_update .bin_backup .gitignore .release generate_license.html .git; do
-    [ -e "$SCRIPT_DIR/$f" ] && chflags hidden "$SCRIPT_DIR/$f" 2>/dev/null
+rm -f "$SCRIPT_DIR/.release/.bin.zip" 2>/dev/null
+
+# ============================================================
+# 二、白名单隐藏：根目录只保留：
+#   ✅ 双击启动_mac.command / 双击启动_windows.vbs / data
+#   其他所有文件/文件夹一律隐藏（包括 .user_data / .bin / .release / version.json / README.md / .git 等）
+# ============================================================
+MAC_LAUNCHER="双击启动_mac.command"
+WIN_LAUNCHER="双击启动_windows.vbs"
+DATA_DIR_NAME="data"
+
+for item in "$SCRIPT_DIR"/* "$SCRIPT_DIR"/.*; do
+    # 跳过 "." 和 ".." 本身
+    case "$item" in
+        "$SCRIPT_DIR/."|"$SCRIPT_DIR/..") continue ;;
+    esac
+    [ -e "$item" ] || continue
+    name="$(basename "$item")"
+
+    # 白名单判断
+    case "$name" in
+        "$MAC_LAUNCHER"|"$WIN_LAUNCHER")
+            # 启动脚本确保可见
+            chflags nohidden "$item" 2>/dev/null
+            continue
+            ;;
+        "$DATA_DIR_NAME")
+            # data 目录保持可见
+            chflags nohidden "$item" 2>/dev/null
+            continue
+            ;;
+    esac
+    # 其它一律隐藏
+    chflags hidden "$item" 2>/dev/null
 done
 
 # 每次点击都重启服务：先杀掉旧进程（8089 和备用 8090）

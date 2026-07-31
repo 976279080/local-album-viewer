@@ -10,6 +10,57 @@ Set objFSO = CreateObject("Scripting.FileSystemObject")
 ' Get script directory
 strBasePath = objFSO.GetParentFolderName(WScript.ScriptFullName)
 
+' ============================================================
+' 一、清理无用文件：只删 .release\.bin.zip（下载解压完就无用了）
+' ============================================================
+On Error Resume Next
+If objFSO.FileExists(strBasePath & "\.release\.bin.zip") Then
+    objFSO.DeleteFile strBasePath & "\.release\.bin.zip", True
+End If
+On Error GoTo 0
+
+' ============================================================
+' 二、白名单隐藏：根目录只保留
+'   ✅ 双击启动_mac.command / 双击启动_windows.vbs / data
+'   其他所有文件/文件夹一律隐藏（包括 .user_data / .bin / .release / version.json / README.md / .git 等）
+' ============================================================
+Dim MAC_LAUNCHER, WIN_LAUNCHER, DATA_DIR_NAME
+MAC_LAUNCHER = "双击启动_mac.command"
+WIN_LAUNCHER = "双击启动_windows.vbs"
+DATA_DIR_NAME = "data"
+
+On Error Resume Next
+Dim objFolder, colItems, objItem, strName, bKeep
+Set objFolder = objFSO.GetFolder(strBasePath)
+
+' 先处理所有文件
+Set colItems = objFolder.Files
+For Each objItem In colItems
+    strName = objItem.Name
+    bKeep = False
+    If StrComp(strName, MAC_LAUNCHER, vbTextCompare) = 0 Then bKeep = True
+    If StrComp(strName, WIN_LAUNCHER, vbTextCompare) = 0 Then bKeep = True
+    If bKeep Then
+        ' 确保可见
+        objShell.Run "cmd /c attrib -h """ & objItem.Path & """", 0, True
+    Else
+        ' 其他全部隐藏
+        objShell.Run "cmd /c attrib +h """ & objItem.Path & """", 0, True
+    End If
+Next
+
+' 再处理所有子文件夹
+Set colItems = objFolder.SubFolders
+For Each objItem In colItems
+    strName = objItem.Name
+    If StrComp(strName, DATA_DIR_NAME, vbTextCompare) = 0 Then
+        objShell.Run "cmd /c attrib -h """ & objItem.Path & """", 0, True
+    Else
+        objShell.Run "cmd /c attrib +h """ & objItem.Path & """", 0, True
+    End If
+Next
+On Error GoTo 0
+
 ' main.py path
 strMainPath = strBasePath & "\.bin\src\main.py"
 
@@ -30,24 +81,6 @@ If Not objFSO.FileExists(strPythonPath) Then
         WScript.Quit 1
     End If
 End If
-
-' ============================================================
-' Hide files that users don't need to see
-' ============================================================
-On Error Resume Next
-objShell.Run "cmd /c attrib +h """ & strBasePath & "\README.md""", 0, True
-objShell.Run "cmd /c attrib +h """ & strBasePath & "\version.json""", 0, True
-objShell.Run "cmd /c attrib +h """ & strBasePath & "\.bin""", 0, True
-objShell.Run "cmd /c attrib +h """ & strBasePath & "\.user_data""", 0, True
-objShell.Run "cmd /c attrib +h """ & strBasePath & "\.trae""", 0, True
-objShell.Run "cmd /c attrib +h """ & strBasePath & "\.tests""", 0, True
-objShell.Run "cmd /c attrib +h """ & strBasePath & "\.pending_update""", 0, True
-objShell.Run "cmd /c attrib +h """ & strBasePath & "\.bin_update""", 0, True
-objShell.Run "cmd /c attrib +h """ & strBasePath & "\.bin_backup""", 0, True
-objShell.Run "cmd /c attrib +h """ & strBasePath & "\.gitignore""", 0, True
-objShell.Run "cmd /c attrib +h """ & strBasePath & "\.release""", 0, True
-objShell.Run "cmd /c attrib +h """ & strBasePath & "\generate_license.html""", 0, True
-On Error GoTo 0
 
 ' Kill old process on port 8089
 On Error Resume Next
@@ -91,5 +124,8 @@ Else
     MsgBox "Service startup timeout, please check the log", vbExclamation, "Warning"
 End If
 
+Set objFolder = Nothing
+Set colItems = Nothing
+Set objWMI = Nothing
 Set objFSO = Nothing
 Set objShell = Nothing
