@@ -145,6 +145,12 @@ class MediaProcessor {
      * @returns {Promise<{width, height, createTime, thumbnail, thumbnailBlob}>}
      */
     static async processVideo(file) {
+        // 并行解析 MP4 mvhd 的 creation_time（比 file.lastModified 更可靠，
+        // 某些 App 处理后的视频 lastModified 会被错误设为 FILETIME 纪元 1601-01-01）
+        const ext = this.getFileExtension(file.name);
+        const mp4TimePromise = (ext === '.mp4' || ext === '.m4v' || ext === '.mov')
+            ? this.getMp4CreationTime(file) : Promise.resolve(null);
+
         return new Promise((resolve, reject) => {
             const video = document.createElement('video');
             const url = URL.createObjectURL(file);
@@ -186,10 +192,23 @@ class MediaProcessor {
 
                     const { canvas, blob } = await this.generateThumbnail(video, 'image/webp');
 
+                    // 优先使用 MP4 mvhd 时间；若 mvhd 解析失败且 lastModified 异常（如 1601 年），回退到当前时间
+                    let finalCreateTime = createTime;
+                    try {
+                        const mp4Time = await mp4TimePromise;
+                        if (mp4Time && this._isReasonableDate(mp4Time)) {
+                            finalCreateTime = mp4Time;
+                        } else if (finalCreateTime && !this._isReasonableDate(finalCreateTime)) {
+                            finalCreateTime = new Date().toISOString();
+                        }
+                    } catch (e) {
+                        console.warn('MP4 时间解析异常:', e.message);
+                    }
+
                     resolve({
                         width,
                         height,
-                        createTime,
+                        createTime: finalCreateTime,
                         thumbnail: canvas.toDataURL('image/webp', this.WEBP_QUALITY),
                         thumbnailBlob: blob,
                         originalName: file.name
@@ -365,6 +384,113 @@ class MediaProcessor {
         }
         // 回退到当前时间
         return new Date().toISOString();
+    }
+
+    /**
+     * 判断日期是否合理（年份在 2000 ~ 当前+1 之间）
+     * 用于过滤异常时间，如 FILETIME 纪元 1601-01-01
+     */
+    static _isReasonableDate(isoStr) {
+        if (!isoStr) return false;
+        const d = new Date(isoStr);
+        if (isNaN(d.getTime())) return false;
+        const year = d.getUTCFullYear();
+        const nowYear = new Date().getUTCFullYear();
+        return year >= 2000 && year <= nowYear + 1;
+    }
+
+    /**
+     * 从 MP4/MOV/M4V 文件中解析 mvhd 的 creation_time
+     * 比浏览器 file.lastModified 更可靠，可避免某些 App 转存后时间被污染为 1601 年。
+     * @param {File} file - MP4 文件
+     * @returns {Promise<string|null>} ISO 日期字符串，解析失败返回 null
+     */
+    static async getMp4CreationTime(file) {
+        try {
+            const fileSize = file.size;
+            let offset = 0;
+            // 逐个读取顶层 box 头部，找到 moov
+            while (offset + 8 <= fileSize) {
+                const headerBuf = await file.slice(offset, offset + 16).arrayBuffer();
+                if (headerBuf.byteLength < 8) break;
+                const view = new DataView(headerBuf);
+                const bytes = new Uint8Array(headerBuf);
+
+                let size = view.getUint32(0);
+                const type = String.fromCharCode(bytes[4], bytes[5], bytes[6], bytes[7]);
+                let headerSize = 8;
+
+                if (size === 1) {
+                    if (headerBuf.byteLength < 16) break;
+                    size = Number(view.getBigUint64(8));
+                    headerSize = 16;
+                } else if (size === 0) {
+                    size = fileSize - offset;
+                }
+                if (size < 8) break;
+
+                if (type === 'moov') {
+                    // 读取 moov 数据部分前 4KB，足够找到 mvhd（mvhd 通常是 moov 第一个子 box）
+                    const readSize = Math.min(size, 4096);
+                    const moovBuf = await file.slice(offset + headerSize, offset + headerSize + readSize).arrayBuffer();
+                    return this._parseMvhdInMoov(moovBuf);
+                }
+
+                offset += size;
+            }
+        } catch (e) {
+            console.warn('MP4 mvhd 解析失败:', e.message);
+        }
+        return null;
+    }
+
+    /**
+     * 在 moov box 数据中查找 mvhd 并解析 creation_time
+     * mvhd 是 moov 的直接子 box，结构：
+     *   version(1) + flags(3) + creation_time(4 或 8) + ...
+     * creation_time 为 MP4 epoch（1904-01-01 UTC）起的秒数
+     */
+    static _parseMvhdInMoov(buffer) {
+        const view = new DataView(buffer);
+        const bytes = new Uint8Array(buffer);
+        const len = bytes.length;
+        let pos = 0;
+
+        while (pos + 8 <= len) {
+            let size = view.getUint32(pos);
+            const type = String.fromCharCode(bytes[pos + 4], bytes[pos + 5], bytes[pos + 6], bytes[pos + 7]);
+            let headerSize = 8;
+
+            if (size === 1) {
+                if (pos + 16 > len) break;
+                size = Number(view.getBigUint64(pos + 8));
+                headerSize = 16;
+            } else if (size === 0) {
+                size = len - pos;
+            }
+            if (size < 8) break;
+
+            if (type === 'mvhd' && pos + headerSize + 4 <= len) {
+                const dataPos = pos + headerSize;
+                const version = bytes[dataPos];
+                let creationTime;
+                if (version === 0) {
+                    if (dataPos + 8 > len) return null;
+                    creationTime = view.getUint32(dataPos + 4);
+                } else {
+                    if (dataPos + 12 > len) return null;
+                    creationTime = Number(view.getBigUint64(dataPos + 4));
+                }
+                const mp4EpochMs = Date.UTC(1904, 0, 1, 0, 0, 0);
+                const date = new Date(mp4EpochMs + creationTime * 1000);
+                if (!isNaN(date.getTime())) {
+                    return date.toISOString();
+                }
+                return null;
+            }
+            pos += size;
+        }
+        return null;
     }
 
     /**

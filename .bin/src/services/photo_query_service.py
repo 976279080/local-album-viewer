@@ -171,7 +171,8 @@ class PhotoQueryService:
         if tag_names is None:
             tag_names = self._get_photo_tag_names(photo)
 
-        paths = self._build_photo_paths(photo['album_id'], photo['id'], album_name, year, filename)
+        paths = self._build_photo_paths(photo['album_id'], photo['id'], album_name, year, filename,
+                                         photo.get('upload_time'))
 
         # 列表渲染必需字段（含详情页打开瞬间需要的 original_url）
         photo_data = {
@@ -207,15 +208,20 @@ class PhotoQueryService:
         return photo_data
 
     @staticmethod
-    def _build_photo_paths(album_id: int, photo_id: int, album_name: str, year: str, filename: str) -> Dict[str, str]:
-        """构建照片的所有路径字符串"""
+    def _build_photo_paths(album_id: int, photo_id: int, album_name: str, year: str,
+                           filename: str, upload_time: int = None) -> Dict[str, str]:
+        """构建照片的所有路径字符串
+
+        upload_time 用于生成 preview_url 的版本号，避免浏览器缓存旧缩略图。
+        """
         file_path = DATA_DIR / album_name / year / filename
         # URL 路径段需进行百分号编码，避免中文/特殊字符导致浏览器或代理解析异常
         from urllib.parse import quote
         encoded_segments = '/'.join(quote(part, safe='') for part in (album_name, year, filename))
+        preview_version = f'?v={upload_time}' if upload_time else ''
         return {
             'absolute_path': str(file_path),
-            'preview_url': f'/previews/{album_id}_{photo_id}.webp',
+            'preview_url': f'/previews/{album_id}_{photo_id}.webp{preview_version}',
             'original_url': f'/data/{encoded_segments}',
         }
 

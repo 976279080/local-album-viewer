@@ -353,7 +353,9 @@ class PhotoUpdateService:
         filename = updated_photo.get('filename', photo.get('filename', ''))
 
         file_path = DATA_DIR / album_name / year_str / filename
-        preview_url = f'/previews/{updated_photo["album_id"]}_{photo_id}.webp'
+        ut = updated_photo.get('upload_time') or photo.get('upload_time')
+        preview_version = f'?v={ut}' if ut else ''
+        preview_url = f'/previews/{updated_photo["album_id"]}_{photo_id}.webp{preview_version}'
         original_url = f'/data/{album_name}/{year_str}/{filename}'
         new_path_key = f"{album_name}/{year_str}/{filename}"
 

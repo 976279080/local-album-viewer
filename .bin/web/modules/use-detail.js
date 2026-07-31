@@ -254,7 +254,7 @@
         }
 
         function handleDetailKeydown(e) {
-            if (!ui.showDetail) return;
+            if (!detailState.showDetail) return;
             const video = document.querySelector('.detail-left video');
             const isVideoTarget = video && (e.target === video || video.contains(e.target));
             if (e.key === 'ArrowDown') {
