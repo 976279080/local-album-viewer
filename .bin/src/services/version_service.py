@@ -9,32 +9,18 @@
 import json
 import urllib.request
 import urllib.error
-import ssl
 from pathlib import Path
 
-from config import GITEE_RAW_BASE, GITHUB_RAW_BASE, VERSION_JSON_PATH, VERSION_CHECK_TIMEOUT, BASE_DIR
+from config import GITEE_RAW_BASE, VERSION_JSON_PATH, VERSION_CHECK_TIMEOUT, BASE_DIR
 
 
 def _fetch_version_json() -> dict:
-    """从远程获取 version.json，Gitee 失败时自动回退 GitHub"""
-    urls = [f"{GITEE_RAW_BASE}/{VERSION_JSON_PATH}"]
-    if GITHUB_RAW_BASE:
-        urls.append(f"{GITHUB_RAW_BASE}/{VERSION_JSON_PATH}")
-
-    last_error = None
-    for url in urls:
-        try:
-            ctx = ssl.create_default_context()
-            req = urllib.request.Request(url, headers={'User-Agent': 'AlbumViewerVersionChecker'})
-            with urllib.request.urlopen(req, timeout=VERSION_CHECK_TIMEOUT, context=ctx) as resp:
-                raw = resp.read().decode('utf-8')
-            return json.loads(raw)
-        except Exception as e:
-            last_error = e
-            continue
-
-    # 全部失败
-    raise last_error
+    """从远程获取 version.json"""
+    url = f"{GITEE_RAW_BASE}/{VERSION_JSON_PATH}"
+    req = urllib.request.Request(url, headers={'User-Agent': 'AlbumViewerVersionChecker'})
+    with urllib.request.urlopen(req, timeout=VERSION_CHECK_TIMEOUT) as resp:
+        raw = resp.read().decode('utf-8')
+    return json.loads(raw)
 
 
 def _is_version_stable(v: dict) -> bool:
