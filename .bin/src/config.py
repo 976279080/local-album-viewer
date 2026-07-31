@@ -46,8 +46,9 @@ def init_dirs():
 
 # 版本检查配置
 GITEE_RAW_BASE = 'https://gitee.com/cdgm/local-album-viewer/raw/main'  # 码云 raw 地址
+GITHUB_RAW_BASE = 'https://github.com/976279080/local-album-viewer/main'  # GitHub raw 备用地址
 VERSION_JSON_PATH = 'version.json'  # version.json 相对路径
-VERSION_CHECK_TIMEOUT = 5  # 版本检查超时时间（秒）
+VERSION_CHECK_TIMEOUT = 10  # 版本检查超时时间（秒）
 
 # 首次进入引导遮罩
 # True: 无论是否已有照片，都强制显示首次引导弹窗（方便测试）

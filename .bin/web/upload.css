@@ -134,27 +134,31 @@
             border: 1px solid var(--color-border);
         }
         .tree-text {
-            font-family: 'SF Mono', 'Monaco', 'Menlo', monospace;
+            font-family: 'SF Mono', 'Monaco', 'Menlo', 'Consolas', 'Microsoft YaHei Mono', 'Courier New', monospace;
             font-size: 13px;
-            line-height: 2;
+            line-height: 1.8;
             color: var(--color-text-secondary);
         }
         .tree-text .tree-row {
             display: flex;
             align-items: baseline;
-            gap: 4px;
+            gap: 6px;
+            white-space: nowrap;
         }
         .tree-text .tree-sym {
             flex-shrink: 0;
-            width: 28px;
+            width: 24px;
             color: var(--color-text-muted);
+            text-align: left;
         }
         .tree-text .tree-name {
             flex-shrink: 0;
-            width: 180px;
+            min-width: 180px;
+            max-width: 240px;
         }
         .tree-text .tree-desc {
             flex: 1;
+            white-space: normal;
         }
         .tree-text .tip-green {
             color: var(--color-success);

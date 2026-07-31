@@ -9,9 +9,32 @@
 import json
 import urllib.request
 import urllib.error
+import ssl
 from pathlib import Path
 
-from config import GITEE_RAW_BASE, VERSION_JSON_PATH, VERSION_CHECK_TIMEOUT, BASE_DIR
+from config import GITEE_RAW_BASE, GITHUB_RAW_BASE, VERSION_JSON_PATH, VERSION_CHECK_TIMEOUT, BASE_DIR
+
+
+def _fetch_version_json() -> dict:
+    """从远程获取 version.json，Gitee 失败时自动回退 GitHub"""
+    urls = [f"{GITEE_RAW_BASE}/{VERSION_JSON_PATH}"]
+    if GITHUB_RAW_BASE:
+        urls.append(f"{GITHUB_RAW_BASE}/{VERSION_JSON_PATH}")
+
+    last_error = None
+    for url in urls:
+        try:
+            ctx = ssl.create_default_context()
+            req = urllib.request.Request(url, headers={'User-Agent': 'AlbumViewerVersionChecker'})
+            with urllib.request.urlopen(req, timeout=VERSION_CHECK_TIMEOUT, context=ctx) as resp:
+                raw = resp.read().decode('utf-8')
+            return json.loads(raw)
+        except Exception as e:
+            last_error = e
+            continue
+
+    # 全部失败
+    raise last_error
 
 
 def _is_version_stable(v: dict) -> bool:
@@ -115,12 +138,8 @@ class VersionService:
             'error': '',
         }
 
-        url = f"{GITEE_RAW_BASE}/{VERSION_JSON_PATH}"
         try:
-            req = urllib.request.Request(url, headers={'User-Agent': 'AlbumViewerVersionChecker'})
-            with urllib.request.urlopen(req, timeout=VERSION_CHECK_TIMEOUT) as resp:
-                raw = resp.read().decode('utf-8')
-            data = json.loads(raw)
+            data = _fetch_version_json()
         except Exception as e:
             result['error'] = f'获取版本信息失败: {str(e)}'
             if local_data:
@@ -200,20 +219,10 @@ class VersionService:
             'error': '',
         }
 
-        url = f"{GITEE_RAW_BASE}/{VERSION_JSON_PATH}"
         try:
-            req = urllib.request.Request(url, headers={'User-Agent': 'AlbumViewerVersionChecker'})
-            with urllib.request.urlopen(req, timeout=VERSION_CHECK_TIMEOUT) as resp:
-                raw = resp.read().decode('utf-8')
-            data = json.loads(raw)
-        except urllib.error.HTTPError as e:
-            result['error'] = f'网络请求失败: HTTP {e.code}'
-            return result
-        except urllib.error.URLError as e:
-            result['error'] = f'网络请求失败: {str(e.reason if hasattr(e, "reason") else e)}'
-            return result
+            data = _fetch_version_json()
         except Exception as e:
-            result['error'] = f'网络请求失败: {str(e)}'
+            result['error'] = f'获取版本信息失败: {str(e)}'
             return result
 
         remote_version = str(data.get('latest_version', '') or data.get('version', '')).strip()
