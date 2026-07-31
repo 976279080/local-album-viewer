@@ -49,9 +49,11 @@ def init_logging(level: str = 'INFO', log_file: str = None) -> None:
     file_handler.setFormatter(formatter)
     root_logger.addHandler(file_handler)
 
-    console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setFormatter(formatter)
-    root_logger.addHandler(console_handler)
+    # 仅在 stdout 可用时添加控制台处理器（pythonw.exe 下 sys.stdout 为 None）
+    if sys.stdout is not None:
+        console_handler = logging.StreamHandler(sys.stdout)
+        console_handler.setFormatter(formatter)
+        root_logger.addHandler(console_handler)
 
     _log_initialized = True
 

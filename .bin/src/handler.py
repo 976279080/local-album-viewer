@@ -96,6 +96,7 @@ class PhotoHandler(
         self.send_header('Access-Control-Allow-Origin', '*')
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
         self.send_header('Access-Control-Allow-Headers', 'Content-Type, X-Auth')
+        self.send_header('Content-Length', '0')
         self.end_headers()
 
     def do_GET(self) -> None:
