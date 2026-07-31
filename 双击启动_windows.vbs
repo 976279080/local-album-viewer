@@ -21,11 +21,11 @@ On Error GoTo 0
 
 ' ============================================================
 ' 二、白名单隐藏：根目录只保留
-'   ✅ 双击启动_mac.command / 双击启动_windows.vbs / data
+'   ✅ 首次单击启动_mac.command / 双击启动_windows.vbs / data
 '   其他所有文件/文件夹一律隐藏（包括 .user_data / .bin / .release / version.json / README.md / .git 等）
 ' ============================================================
 Dim MAC_LAUNCHER, WIN_LAUNCHER, DATA_DIR_NAME
-MAC_LAUNCHER = "双击启动_mac.command"
+MAC_LAUNCHER = "首次单击启动_mac.command"
 WIN_LAUNCHER = "双击启动_windows.vbs"
 DATA_DIR_NAME = "data"
 

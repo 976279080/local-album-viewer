@@ -3,6 +3,7 @@
 /.user_data/db/*
 /.user_data/restarter.log
 /.user_data/restarter.lock
+/.user_data/album_viewer.log
 .pytest_cache/
 /.tests
 /generate_license.html

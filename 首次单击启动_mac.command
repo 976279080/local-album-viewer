@@ -2,7 +2,7 @@
 # 无联网相册 - macOS 启动脚本
 # 双击运行，启动后自动关闭终端窗口（快速路径：不检测更新）
 # 注意：如果双击提示"来自身份不明的开发者"，请右键选择"打开"一次
-#       或在终端执行：xattr -dr com.apple.quarantine "双击启动_mac.command"
+#       或在终端执行：xattr -dr com.apple.quarantine "首次单击启动_mac.command"
 
 # 一、自身先移除 macOS quarantine 属性（即使是用户手动双击也能生效）
 xattr -dr com.apple.quarantine "$0" 2>/dev/null
@@ -17,10 +17,10 @@ rm -f "$SCRIPT_DIR/.release/.bin.zip" 2>/dev/null
 
 # ============================================================
 # 二、白名单隐藏：根目录只保留：
-#   ✅ 双击启动_mac.command / 双击启动_windows.vbs / data
+#   ✅ 首次单击启动_mac.command / 双击启动_windows.vbs / data
 #   其他所有文件/文件夹一律隐藏（包括 .user_data / .bin / .release / version.json / README.md / .git 等）
 # ============================================================
-MAC_LAUNCHER="双击启动_mac.command"
+MAC_LAUNCHER="首次单击启动_mac.command"
 WIN_LAUNCHER="双击启动_windows.vbs"
 DATA_DIR_NAME="data"
 
@@ -73,7 +73,7 @@ for p in 8089 8090; do
         if curl -sfS "http://localhost:$p/" > /dev/null 2>&1; then
             open "http://localhost:$p"
             # 关闭终端窗口（只关当前启动这个）
-            osascript -e 'tell application "Terminal" to close (every window whose name contains "双击启动_mac")' > /dev/null 2>&1 &
+            osascript -e 'tell application "Terminal" to close (every window whose name contains "首次单击启动_mac")' > /dev/null 2>&1 &
             exit 0
         fi
         sleep 0.15
