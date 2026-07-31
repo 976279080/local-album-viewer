@@ -24,10 +24,11 @@ On Error GoTo 0
 '   ✅ 首次单击启动_mac.command / 双击启动_windows.vbs / data
 '   其他所有文件/文件夹一律隐藏（包括 .user_data / .bin / .release / version.json / README.md / .git 等）
 ' ============================================================
-Dim MAC_LAUNCHER, WIN_LAUNCHER, DATA_DIR_NAME
+Dim MAC_LAUNCHER, WIN_LAUNCHER, DATA_DIR_NAME, HIDDEN_ATTR
 MAC_LAUNCHER = "首次单击启动_mac.command"
 WIN_LAUNCHER = "双击启动_windows.vbs"
 DATA_DIR_NAME = "data"
+HIDDEN_ATTR = 2  ' Windows FileAttribute：Hidden = 2
 
 On Error Resume Next
 Dim objFolder, colItems, objItem, strName, bKeep
@@ -41,11 +42,11 @@ For Each objItem In colItems
     If StrComp(strName, MAC_LAUNCHER, vbTextCompare) = 0 Then bKeep = True
     If StrComp(strName, WIN_LAUNCHER, vbTextCompare) = 0 Then bKeep = True
     If bKeep Then
-        ' 确保可见
-        objShell.Run "cmd /c attrib -h """ & objItem.Path & """", 0, True
+        ' 确保可见：清除 Hidden 位
+        objItem.Attributes = objItem.Attributes And Not HIDDEN_ATTR
     Else
-        ' 其他全部隐藏
-        objShell.Run "cmd /c attrib +h """ & objItem.Path & """", 0, True
+        ' 其他全部隐藏：设置 Hidden 位
+        objItem.Attributes = objItem.Attributes Or HIDDEN_ATTR
     End If
 Next
 
@@ -54,9 +55,11 @@ Set colItems = objFolder.SubFolders
 For Each objItem In colItems
     strName = objItem.Name
     If StrComp(strName, DATA_DIR_NAME, vbTextCompare) = 0 Then
-        objShell.Run "cmd /c attrib -h """ & objItem.Path & """", 0, True
+        ' data 目录保持可见
+        objItem.Attributes = objItem.Attributes And Not HIDDEN_ATTR
     Else
-        objShell.Run "cmd /c attrib +h """ & objItem.Path & """", 0, True
+        ' 其他全部隐藏
+        objItem.Attributes = objItem.Attributes Or HIDDEN_ATTR
     End If
 Next
 On Error GoTo 0
