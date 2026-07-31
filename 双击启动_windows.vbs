@@ -24,13 +24,19 @@ On Error GoTo 0
 '   ✅ 首次单击启动_mac.command / 双击启动_windows.vbs / data
 '   其他所有文件/文件夹一律隐藏（包括 .user_data / .bin / .release / version.json / README.md / .git 等）
 ' ============================================================
-Dim MAC_LAUNCHER, WIN_LAUNCHER, DATA_DIR_NAME, HIDDEN_ATTR
+Dim MAC_LAUNCHER, WIN_LAUNCHER, DATA_DIR_NAME, HIDDEN_ATTR, STR_COMP_IGNORE_CASE
 MAC_LAUNCHER = "首次单击启动_mac.command"
 WIN_LAUNCHER = "双击启动_windows.vbs"
 DATA_DIR_NAME = "data"
 HIDDEN_ATTR = 2  ' Windows FileAttribute：Hidden = 2
+STR_COMP_IGNORE_CASE = 1  ' 等价于 vbTextCompare，数字字面量避免编码解析问题
 
 On Error Resume Next
+If objFSO.FileExists(strBasePath & "\.release\.bin.zip") Then
+    objFSO.DeleteFile strBasePath & "\.release\.bin.zip", True
+End If
+On Error GoTo 0
+
 Dim objFolder, colItems, objItem, strName, bKeep
 Set objFolder = objFSO.GetFolder(strBasePath)
 
@@ -39,13 +45,11 @@ Set colItems = objFolder.Files
 For Each objItem In colItems
     strName = objItem.Name
     bKeep = False
-    If StrComp(strName, MAC_LAUNCHER, vbTextCompare) = 0 Then bKeep = True
-    If StrComp(strName, WIN_LAUNCHER, vbTextCompare) = 0 Then bKeep = True
+    If StrComp(strName, MAC_LAUNCHER, STR_COMP_IGNORE_CASE) = 0 Then bKeep = True
+    If StrComp(strName, WIN_LAUNCHER, STR_COMP_IGNORE_CASE) = 0 Then bKeep = True
     If bKeep Then
-        ' 确保可见：清除 Hidden 位
         objItem.Attributes = objItem.Attributes And Not HIDDEN_ATTR
     Else
-        ' 其他全部隐藏：设置 Hidden 位
         objItem.Attributes = objItem.Attributes Or HIDDEN_ATTR
     End If
 Next
@@ -54,15 +58,12 @@ Next
 Set colItems = objFolder.SubFolders
 For Each objItem In colItems
     strName = objItem.Name
-    If StrComp(strName, DATA_DIR_NAME, vbTextCompare) = 0 Then
-        ' data 目录保持可见
+    If StrComp(strName, DATA_DIR_NAME, STR_COMP_IGNORE_CASE) = 0 Then
         objItem.Attributes = objItem.Attributes And Not HIDDEN_ATTR
     Else
-        ' 其他全部隐藏
         objItem.Attributes = objItem.Attributes Or HIDDEN_ATTR
     End If
 Next
-On Error GoTo 0
 
 ' main.py path
 strMainPath = strBasePath & "\.bin\src\main.py"
