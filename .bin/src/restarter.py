@@ -1,487 +1,505 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-无联网相册 - 自动重启 & 应用更新脚本
-独立运行（脱离父 HTTP 服务进程），负责：
-
-1) 读取 .pending_update 标记（含目标版本号）
-2) 关闭当前监听 8089 端口的服务
-3) 原子替换 .bin_update → .bin（失败自动回滚，回滚成功删 .bin_backup）
-4) 仅在替换成功后：更新 version.json.latest_version
-5) 重新启动服务、等待就绪
-6) 打开浏览器跳回 /upload.html（不是首页）
-
-用法：
-    python restarter.py
-触发时机：
-    上传页点击「更新到此版本」→ 下载完成 → 倒计时结束 → POST /api/version/restart
+程序重启/更新应用脚本
+- 从启动脚本或 HTTP API trigger-restart 调用
+- 若存在 .pending_update + .bin_update，则替换 .bin 目录后再启动服务
+- 无论成功/失败，都会清理 .pending_update/.bin_update/.bin_backup 临时文件
+- 被 HTTP API trigger 时，会先等 1.2s 让父进程把响应发送完
 """
 
 import json
 import os
-import sys
-import time
-import socket
 import shutil
 import subprocess
-import urllib.request
-import webbrowser
+import sys
+import time
 from pathlib import Path
 
-
-# ====== 常量（与 config.py/launcher.py 保持一致，避免 import 带来的路径耦合） ======
-PORT = 8089
-SERVER_READY_MAX_WAIT = 12  # 秒，服务重启就绪最大等待
-PORT_RELEASE_MAX_WAIT = 4   # 秒，kill 后端口释放最大等待
-VERSION_JSON_NAME = 'version.json'
+# 单实例锁：避免 HTTP trigger 与启动脚本同时跑 restarter 造成冲突
+_SINGLE_LOCK_FP = None
 
 
-# ====== 日志（简单 stdout/stderr，调用方 Popen 已重定向到 .user_data/restarter.log） ======
+LOG_FILE = None
+LOG_FP = None
+
+
 def log(msg: str) -> None:
     ts = time.strftime('%H:%M:%S')
-    print(f"[restarter {ts}] {msg}", flush=True)
+    line = f"[restarter {ts}] {msg}\n"
+    sys.stdout.write(line)
+    sys.stdout.flush()
+    if LOG_FP is not None:
+        try:
+            LOG_FP.write(line)
+            LOG_FP.flush()
+        except Exception:
+            pass
 
 
 def err(msg: str) -> None:
     ts = time.strftime('%H:%M:%S')
-    print(f"[restarter {ts}] ERROR: {msg}", file=sys.stderr, flush=True)
+    line = f"[restarter {ts}] [ERR] {msg}\n"
+    sys.stderr.write(line)
+    sys.stderr.flush()
+    if LOG_FP is not None:
+        try:
+            LOG_FP.write(line)
+            LOG_FP.flush()
+        except Exception:
+            pass
 
 
-# ====== 路径解析 ======
+def cleanup_update_tempfiles(project_root: Path) -> None:
+    """统一清理更新相关的临时文件/目录（success / rollback / 异常 都要走这里）"""
+    pending_marker = project_root / '.pending_update'
+    bin_update = project_root / '.bin_update'
+    bin_backup = project_root / '.bin_backup'
+    for label, path, kind in [
+        ('.pending_update', pending_marker, 'file'),
+        ('.bin_update', bin_update, 'dir'),
+        ('.bin_backup', bin_backup, 'dir'),
+    ]:
+        if not path.exists():
+            continue
+        try:
+            if kind == 'file':
+                path.unlink()
+            else:
+                shutil.rmtree(path, ignore_errors=True)
+            log(f"cleanup: 已删除 {label}")
+        except Exception as ex:
+            err(f"cleanup: 删除 {label} 失败（忽略继续）: {ex}")
+
+
 def resolve_project_root() -> Path:
-    """确定项目根目录（.bin 的父目录）。
+    # restarter.py 位于 <PROJECT_ROOT>/.bin/src/restarter.py
+    here = Path(__file__).resolve().parent
+    if here.name != 'src':
+        return here.parent.parent
+    bin_dir = here.parent
+    if bin_dir.name != '.bin':
+        return bin_dir.parent
+    return bin_dir.parent
 
-    优先级：
-    1) cwd 若包含 .bin/src/main.py 直接用
-    2) 通过 __file__ 相对定位：.bin/src/restarter.py → .bin → 父目录
-    3) QORDER_BASE_DIR 环境变量兜底
+
+def acquire_single_instance_lock(project_root: Path) -> bool:
+    """单实例锁：同一时间只允许一个 restarter 在跑（macOS/Linux 用 fcntl；Windows 用文件占用）
+    成功取得锁返回 True；已有 restarter 在跑返回 False（直接退出避免冲突）
     """
-    cwd = Path(os.getcwd()).resolve()
-    if (cwd / '.bin' / 'src' / 'main.py').is_file():
-        return cwd
-    here = Path(__file__).resolve()  # .bin/src/restarter.py
-    candidate = here.parent.parent.parent  # .bin → project_root
-    if (candidate / '.bin' / 'src' / 'main.py').is_file():
-        return candidate
-    env_base = os.environ.get('QORDER_BASE_DIR')
-    if env_base:
-        p = Path(env_base).resolve()
-        if (p / '.bin' / 'src' / 'main.py').is_file():
-            return p
-    # 兜底：用 cwd（即使不完美也先继续）
-    return cwd
-
-
-def is_port_in_use() -> bool:
+    global _SINGLE_LOCK_FP
+    lock_file = project_root / '.user_data' / 'restarter.lock'
     try:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.settimeout(0.3)
-            return s.connect_ex(('127.0.0.1', PORT)) == 0
-    except OSError:
-        return False
-
-
-def wait_port_free(timeout: float = PORT_RELEASE_MAX_WAIT) -> bool:
-    end = time.time() + timeout
-    while time.time() < end:
-        if not is_port_in_use():
-            return True
-        time.sleep(0.15)
-    return not is_port_in_use()
-
-
-def is_server_ready() -> bool:
-    """通过 /api/summary 检查服务是否真的启动成功"""
-    try:
-        req = urllib.request.Request(
-            f'http://127.0.0.1:{PORT}/api/summary',
-            headers={'User-Agent': 'RestarterProbe'},
-        )
-        with urllib.request.urlopen(req, timeout=1.0) as resp:
-            return resp.status == 200
-    except Exception:
-        return False
-
-
-def wait_server_ready(timeout: float = SERVER_READY_MAX_WAIT) -> bool:
-    end = time.time() + timeout
-    while time.time() < end:
-        if is_server_ready():
-            return True
-        time.sleep(0.2)
-    return is_server_ready()
-
-
-# ====== 进程终止 ======
-def kill_listeners_on_port() -> None:
-    """终止所有占用 8089 端口的进程（跨平台）。"""
-    if sys.platform == 'darwin':
-        try:
-            r = subprocess.run(
-                ['lsof', '-ti:%d' % PORT],
-                capture_output=True, text=True, timeout=5,
-            )
-            for pid in (r.stdout or '').strip().splitlines():
-                pid = pid.strip()
-                if not pid:
-                    continue
-                try:
-                    os.kill(int(pid), 9)
-                    log(f"已终止占用端口进程 PID={pid}")
-                except (ProcessLookupError, ValueError, PermissionError) as ex:
-                    err(f"终止进程失败 PID={pid}: {ex}")
-        except Exception as ex:
-            err(f"lsof 扫描失败: {ex}")
-    elif sys.platform.startswith('linux'):
-        try:
-            subprocess.run(['fuser', '-k', f'{PORT}/tcp'], capture_output=True, timeout=5)
-        except Exception as ex:
-            err(f"fuser 终止失败: {ex}")
-    elif sys.platform == 'win32':
-        try:
-            r = subprocess.run(
-                ['netstat', '-ano'],
-                capture_output=True, text=True, timeout=5,
-            )
-            for line in (r.stdout or '').splitlines():
-                if f':{PORT}' in line and 'LISTENING' in line:
-                    parts = line.split()
-                    if parts:
-                        pid = parts[-1].strip()
-                        try:
-                            subprocess.run(
-                                ['taskkill', '/F', '/PID', pid],
-                                capture_output=True, timeout=5,
-                            )
-                            log(f"已终止占用端口进程 PID={pid}")
-                        except Exception as ex:
-                            err(f"taskkill 失败 PID={pid}: {ex}")
-            # 兜底：按命令行模式匹配 main.py
+        lock_file.parent.mkdir(parents=True, exist_ok=True)
+        _SINGLE_LOCK_FP = open(lock_file, 'a+', encoding='utf-8')
+        if sys.platform.startswith('win'):
+            # Windows：尝试独占重命名，失败则视为已有进程
             try:
-                r2 = subprocess.run(
-                    ['wmic', 'process', 'where',
-                     "CommandLine LIKE '%main.py%'",
-                     'get', 'ProcessId'],
-                    capture_output=True, text=True, timeout=5,
-                )
-                for line in (r2.stdout or '').splitlines()[1:]:
-                    pid = line.strip()
-                    if pid.isdigit():
-                        try:
-                            subprocess.run(
-                                ['taskkill', '/F', '/PID', pid],
-                                capture_output=True, timeout=5,
-                            )
-                        except Exception:
-                            pass
+                probe = project_root / '.user_data' / 'restarter.lock.probe'
+                os.replace(str(lock_file), str(probe))
+                os.replace(str(probe), str(lock_file))
+            except OSError:
+                try:
+                    _SINGLE_LOCK_FP.close()
+                except Exception:
+                    pass
+                _SINGLE_LOCK_FP = None
+                return False
+            return True
+        # macOS / Linux
+        import fcntl
+        try:
+            fcntl.flock(_SINGLE_LOCK_FP.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except (OSError, ImportError):
+            try:
+                _SINGLE_LOCK_FP.close()
             except Exception:
                 pass
-        except Exception as ex:
-            err(f"Windows 进程清理失败: {ex}")
+            _SINGLE_LOCK_FP = None
+            return False
+        try:
+            _SINGLE_LOCK_FP.truncate(0)
+            _SINGLE_LOCK_FP.seek(0)
+            _SINGLE_LOCK_FP.write(f"pid={os.getpid()}\n")
+            _SINGLE_LOCK_FP.flush()
+        except Exception:
+            pass
+        return True
+    except Exception:
+        try:
+            if _SINGLE_LOCK_FP is not None:
+                _SINGLE_LOCK_FP.close()
+        except Exception:
+            pass
+        _SINGLE_LOCK_FP = None
+        # 无法创建锁也不阻塞启动（极端 fallback）
+        return True
 
 
-# ====== Python 解释器查找 ======
-def find_python_executable(project_root: Path) -> str:
-    bin_dir = project_root / '.bin'
-    if sys.platform == 'win32':
-        for name in ['pythonw.exe', 'python.exe']:
-            p = bin_dir / 'python' / name
-            if p.is_file():
-                return str(p)
-    # macOS: 优先系统 python3（与双击启动脚本一致）
-    if sys.platform == 'darwin':
-        for p in ['/usr/bin/python3', '/usr/bin/python']:
-            if Path(p).is_file():
-                return p
-    # 回退当前解释器
-    return sys.executable or 'python3'
-
-
-# ====== 主流程 ======
-def apply_update(project_root: Path) -> tuple[bool, str]:
-    """应用 .bin_update → .bin。
-
-    Returns:
-        (succeeded, message)
-    """
+def apply_update(project_root: Path) -> dict:
+    """存在待应用更新则替换 .bin，返回 {'ok': bool, 'applied': bool, 'message': str}"""
     pending_marker = project_root / '.pending_update'
-    update_dir = project_root / '.bin_update'
+    bin_update = project_root / '.bin_update'
     bin_dir = project_root / '.bin'
-    backup_dir = project_root / '.bin_backup'
-    version_file = project_root / VERSION_JSON_NAME
+    bin_backup = project_root / '.bin_backup'
 
-    # 1) 读取标记
+    result = {'ok': True, 'applied': False, 'message': ''}
+
+    has_marker = pending_marker.exists() and pending_marker.is_file()
+    has_update = bin_update.is_dir() and (bin_update / 'src' / 'main.py').exists()
+
+    if not has_marker and not has_update:
+        return result
+
+    if has_marker and not has_update:
+        # 标记残留但无实际更新目录 → 清掉标记后继续
+        log(f"检测到 .pending_update 但 .bin_update 不存在或不合法，清除标记继续启动")
+        cleanup_update_tempfiles(project_root)
+        return result
+
+    if has_update and not has_marker:
+        # 下载目录残留但无标记，清理后启动
+        log(f"检测到 .bin_update 但 .pending_update 不存在，清除残留后启动")
+        cleanup_update_tempfiles(project_root)
+        return result
+
+    # 读取标记中的目标版本
     target_version = ''
     try:
-        if pending_marker.is_file():
-            info = json.loads(pending_marker.read_text(encoding='utf-8'))
-            target_version = str(info.get('version', '') or '').strip()
-    except Exception as ex:
-        err(f"读取 .pending_update 失败: {ex}")
+        info = json.loads(pending_marker.read_text(encoding='utf-8'))
+        target_version = str(info.get('version', '') or '').strip()
+    except Exception:
+        target_version = ''
 
-    # 2) 清理旧备份（若存在），防止 mv 失败
-    if backup_dir.exists():
-        try:
-            shutil.rmtree(backup_dir, ignore_errors=True)
-            log("已清理旧的 .bin_backup")
-        except Exception as ex:
-            err(f"清理 .bin_backup 失败: {ex}")
-            # 继续尝试，因为即使有残留也可能由后续 mv 覆盖
+    if not target_version:
+        log(f".pending_update 中未找到有效 target_version，清除残留后启动")
+        cleanup_update_tempfiles(project_root)
+        return result
 
-    has_update = update_dir.is_dir() and pending_marker.is_file()
+    log(f"检测到待应用更新（目标版本 {target_version}），开始替换 .bin ...")
 
-    if has_update:
-        log(f"检测到待应用更新（目标版本 {target_version or '未知'}），开始替换 .bin ...")
-
-        # 3) 备份当前 .bin
-        backup_ok = True
+    try:
+        # 1) 备份当前 .bin
         if bin_dir.exists():
-            try:
-                bin_dir.rename(backup_dir)
-                log(f"已备份当前 .bin → .bin_backup")
-            except Exception as ex:
-                err(f"备份 .bin 失败: {ex}")
-                backup_ok = False
-                # Windows 有时因句柄占用 rename 失败，尝试 rmtree + copytree
-                try:
-                    log("尝试使用复制作为兜底...")
-                    if backup_dir.exists():
-                        shutil.rmtree(backup_dir, ignore_errors=True)
-                    shutil.copytree(bin_dir, backup_dir, symlinks=False)
-                    backup_ok = True
-                    log("复制备份成功")
-                except Exception as ex2:
-                    err(f"复制备份也失败: {ex2}")
+            if bin_backup.exists():
+                shutil.rmtree(bin_backup, ignore_errors=True)
+            shutil.copytree(bin_dir, bin_backup, symlinks=False)
+            log(f"已备份当前 .bin → .bin_backup")
 
-        # 4) 用 .bin_update 替换当前 .bin
-        replace_ok = False
-        if backup_ok:
-            try:
-                # 先清掉原来的 bin（如果 rename 兜底没清）
+        # 2) 用 .bin_update 替换 .bin
+        if bin_dir.exists():
+            shutil.rmtree(bin_dir, ignore_errors=True)
+        shutil.copytree(bin_update, bin_dir, symlinks=False)
+        log(f"已应用 .bin_update → .bin")
+
+        # 3) 把 version.json.latest_version 再写一次（兜底）
+        try:
+            vfile = project_root / 'version.json'
+            if vfile.exists():
+                data = json.loads(vfile.read_text(encoding='utf-8'))
+                data['latest_version'] = target_version
+                vfile.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding='utf-8')
+                log(f"version.json.latest_version 已更新为 {target_version}")
+        except Exception:
+            pass
+
+        result['applied'] = True
+        result['message'] = f"已成功应用更新到版本 {target_version}"
+        cleanup_update_tempfiles(project_root)
+
+    except Exception as ex:
+        # 失败则尝试回滚
+        result['ok'] = False
+        result['applied'] = False
+        msg = f"应用更新失败：{ex}"
+        result['message'] = msg
+        err(msg)
+
+        # 回滚：把 .bin_backup 复制回 .bin
+        try:
+            if bin_backup.exists():
                 if bin_dir.exists():
                     shutil.rmtree(bin_dir, ignore_errors=True)
-                update_dir.rename(bin_dir)
-                replace_ok = True
-                log("已应用 .bin_update → .bin")
-            except Exception as ex:
-                err(f"mv .bin_update → .bin 失败: {ex}")
-                # 再兜底：copytree
-                try:
-                    if bin_dir.exists():
-                        shutil.rmtree(bin_dir, ignore_errors=True)
-                    shutil.copytree(update_dir, bin_dir, symlinks=False)
-                    replace_ok = True
-                    log("复制替换 .bin_update → .bin 成功")
-                except Exception as ex2:
-                    err(f"复制替换也失败: {ex2}")
+                shutil.copytree(bin_backup, bin_dir, symlinks=False)
+                log(f"已从 .bin_backup 回滚到旧版本")
+                result['message'] = f"应用更新失败，已回滚到旧版本: {ex}"
+                cleanup_update_tempfiles(project_root)
+        except Exception as rb:
+            err(f"回滚失败：{rb}")
+            result['message'] = f"应用更新失败，且回滚也失败: {ex} | rollback={rb}"
 
-        # 5) 替换失败 → 回滚
-        rollback_done = False
-        if not replace_ok:
-            err("更新替换失败，启动回滚流程...")
-            if backup_dir.exists():
-                try:
-                    if bin_dir.exists():
-                        shutil.rmtree(bin_dir, ignore_errors=True)
-                    backup_dir.rename(bin_dir)
-                    rollback_done = True
-                    log("回滚成功：.bin_backup → .bin")
-                except Exception as ex:
-                    err(f"mv 回滚失败: {ex}")
-                    try:
-                        shutil.copytree(backup_dir, bin_dir, symlinks=False)
-                        rollback_done = True
-                        log("复制回滚成功")
-                    except Exception as ex2:
-                        err(f"复制回滚也失败: {ex2}")
+    return result
 
-            # 回滚成功后：务必删除 .bin_backup
-            if rollback_done and backup_dir.exists():
-                try:
-                    shutil.rmtree(backup_dir, ignore_errors=True)
-                    log("回滚成功后已删除 .bin_backup")
-                except Exception as ex:
-                    err(f"删除 .bin_backup 失败: {ex}")
 
-            # 清除 .pending_update 和残留 .bin_update
+def kill_port_holders(port: int, project_root: Path) -> None:
+    """释放占用端口的旧进程（只杀 python3 / restarter 相关，避免误伤）"""
+    platform = sys.platform
+    try:
+        if platform == 'darwin':
+            out = subprocess.check_output(
+                ['lsof', '-ti', f':{port}'], stderr=subprocess.DEVNULL
+            ).decode('utf-8', errors='ignore').strip()
+            pids = [p for p in out.splitlines() if p.strip().isdigit()]
+            for pid in pids:
+                try:
+                    subprocess.run(['kill', '-9', pid], stderr=subprocess.DEVNULL)
+                    log(f"已终止占用端口进程 PID={pid}")
+                except Exception:
+                    pass
+        elif platform.startswith('win'):
+            out = subprocess.check_output(
+                ['netstat', '-ano'], stderr=subprocess.DEVNULL
+            ).decode('utf-8', errors='ignore')
+            for line in out.splitlines():
+                if f':{port} ' in line and 'LISTENING' in line:
+                    parts = line.strip().split()
+                    if parts:
+                        pid = parts[-1]
+                        if pid.isdigit():
+                            try:
+                                subprocess.run(['taskkill', '/F', '/PID', pid], stderr=subprocess.DEVNULL)
+                                log(f"已终止占用端口进程 PID={pid}")
+                            except Exception:
+                                pass
+        else:
+            # linux
             try:
-                if pending_marker.exists():
-                    pending_marker.unlink()
-                if update_dir.exists():
-                    shutil.rmtree(update_dir, ignore_errors=True)
+                subprocess.run(['fuser', '-k', f'{port}/tcp'], stderr=subprocess.DEVNULL)
             except Exception:
                 pass
-            return False, (
-                '更新替换失败，已自动回滚到旧版本。'
-                '若问题反复出现，请手动备份后重新下载更新包。'
-            )
-
-        # 6) 替换成功：写入 version.json.latest_version（关键点：只在成功后写）
-        if target_version:
-            try:
-                if version_file.is_file():
-                    data = json.loads(version_file.read_text(encoding='utf-8'))
-                else:
-                    data = {'latest_version': '', 'versions': []}
-                if str(data.get('latest_version', '')) != target_version:
-                    data['latest_version'] = target_version
-                    version_file.write_text(
-                        json.dumps(data, ensure_ascii=False, indent=2),
-                        encoding='utf-8',
-                    )
-                    log(f"version.json.latest_version 已更新为 {target_version}")
-            except Exception as ex:
-                err(f"写入 version.json 失败（不影响功能）: {ex}")
-
-        # 7) 清理：.pending_update / .bin_update（必删）、.bin_backup（可选，默认清理）
-        try:
-            if pending_marker.exists():
-                pending_marker.unlink()
-        except Exception:
-            pass
-        try:
-            if update_dir.exists():
-                shutil.rmtree(update_dir, ignore_errors=True)
-        except Exception:
-            pass
-        try:
-            if backup_dir.exists():
-                shutil.rmtree(backup_dir, ignore_errors=True)
-                log("更新成功后已清理 .bin_backup")
-        except Exception:
-            pass
-
-        return True, f'已成功应用更新到版本 {target_version or "未知"}'
-
-    else:
-        # 没有更新包（可能纯重启）——什么也不做
-        log("没有检测到待应用更新（.pending_update/.bin_update 不存在），仅执行重启。")
-        # 安全起见，清理可能的标记文件
-        try:
-            if pending_marker.exists():
-                pending_marker.unlink()
-        except Exception:
-            pass
-        return True, '无更新，仅重启'
-
-
-def start_server(project_root: Path) -> subprocess.Popen | None:
-    """启动新的服务进程（后台脱离，不依赖当前 restarter 存活）。"""
-    main_py = project_root / '.bin' / 'src' / 'main.py'
-    python_exe = find_python_executable(project_root)
-    log(f"使用 Python: {python_exe}")
-
-    try:
-        if sys.platform == 'win32':
-            DETACHED_PROCESS = 0x00000008
-            CREATE_NEW_PROCESS_GROUP = 0x00000200
-            CREATE_NO_WINDOW = 0x08000000
-            creationflags = DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW
-            startupinfo = subprocess.STARTUPINFO()
-            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-            return subprocess.Popen(
-                [python_exe, str(main_py)],
-                creationflags=creationflags,
-                startupinfo=startupinfo,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                cwd=str(project_root),
-            )
-        else:
-            # macOS / Linux
-            return subprocess.Popen(
-                [python_exe, str(main_py)],
-                start_new_session=True,
-                preexec_fn=os.setpgrp,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                cwd=str(project_root),
-            )
     except Exception as ex:
-        err(f"启动服务进程失败: {ex}")
-        return None
+        log(f"清理端口进程失败（忽略继续）: {ex}")
 
-
-def open_upload_page() -> None:
-    url = f'http://127.0.0.1:{PORT}/upload.html'
+    # 兜底：按进程命令行查找 main.py / restarter.py
     try:
+        if platform == 'darwin':
+            out = subprocess.check_output(
+                ['ps', '-Ao', 'pid=,command='], stderr=subprocess.DEVNULL
+            ).decode('utf-8', errors='ignore')
+            prj = str(project_root)
+            self_pid = str(os.getpid())
+            for line in out.splitlines():
+                l = line.strip()
+                if not l:
+                    continue
+                idx = l.find(' ')
+                if idx <= 0:
+                    continue
+                pid = l[:idx].strip()
+                if pid == self_pid:
+                    # 跳过自己，避免自杀
+                    continue
+                cmd = l[idx + 1:]
+                if ('.bin/src/main.py' in cmd or '.bin/src/restarter.py' in cmd) and prj in cmd:
+                    if not pid.isdigit():
+                        continue
+                    try:
+                        subprocess.run(['kill', '-9', pid], stderr=subprocess.DEVNULL)
+                        log(f"已终止旧进程 PID={pid} ({cmd[:70]})")
+                    except Exception:
+                        pass
+    except Exception:
+        pass
+
+
+def wait_port_ready(port: int, timeout: float = 15.0) -> bool:
+    import socket
+    start = time.time()
+    while time.time() - start < timeout:
+        try:
+            s = socket.create_connection(('127.0.0.1', port), timeout=0.5)
+            s.close()
+            return True
+        except Exception:
+            time.sleep(0.2)
+    return False
+
+
+def start_server(project_root: Path, port: int) -> int:
+    python_bin = sys.executable
+    main_py = project_root / '.bin' / 'src' / 'main.py'
+    log(f"使用 Python: {python_bin}")
+
+    # macOS 用 nohup 后台运行；Windows 用 DETACHED_PROCESS
+    env = os.environ.copy()
+    env['PYTHONIOENCODING'] = 'utf-8'
+
+    if sys.platform == 'darwin':
+        log_path = '/tmp/album_viewer.log'
+        with open(log_path, 'ab') as f:
+            proc = subprocess.Popen(
+                ['nohup', python_bin, str(main_py)],
+                cwd=str(project_root),
+                stdout=f,
+                stderr=subprocess.STDOUT,
+                env=env,
+                start_new_session=True,
+            )
+    elif sys.platform.startswith('win'):
+        DETACHED_PROCESS = 0x00000008
+        CREATE_NEW_PROCESS_GROUP = 0x00000200
+        log_path = project_root / '.user_data' / 'server.log'
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        fp = open(log_path, 'ab')
+        proc = subprocess.Popen(
+            [python_bin, str(main_py)],
+            cwd=str(project_root),
+            stdout=fp,
+            stderr=subprocess.STDOUT,
+            env=env,
+            creationflags=DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP,
+        )
+    else:
+        # linux
+        log_path = '/tmp/album_viewer.log'
+        with open(log_path, 'ab') as f:
+            proc = subprocess.Popen(
+                ['nohup', python_bin, str(main_py)],
+                cwd=str(project_root),
+                stdout=f,
+                stderr=subprocess.STDOUT,
+                env=env,
+                start_new_session=True,
+            )
+
+    log(f"服务进程已启动 PID={proc.pid}，等待就绪...")
+    time.sleep(0.6)
+    if wait_port_ready(port, timeout=15.0):
+        log(f"服务已就绪")
+    else:
+        log(f"警告：等待 {port} 端口超时，但已启动进程，可能稍后就绪")
+
+    # 打开浏览器（mac 用 open，win 用 start）
+    try:
+        url = f"http://127.0.0.1:{port}/upload.html"
         if sys.platform == 'darwin':
-            subprocess.Popen(['open', url])
-        elif sys.platform == 'win32':
-            webbrowser.open(url, new=2, autoraise=True)
-        else:
-            webbrowser.open(url, new=2, autoraise=True)
+            subprocess.Popen(['open', url], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        elif sys.platform.startswith('win'):
+            os.startfile(url)  # noqa
         log(f"已请求打开浏览器: {url}")
     except Exception as ex:
-        err(f"打开浏览器失败: {ex}")
+        log(f"自动打开浏览器失败（忽略）: {ex}")
+
+    return proc.pid
 
 
 def main() -> int:
-    log(f"====== restarter 启动 (pid={os.getpid()}, platform={sys.platform}) ======")
+    global LOG_FP, LOG_FILE
+
     project_root = resolve_project_root()
+    user_data = project_root / '.user_data'
+    user_data.mkdir(parents=True, exist_ok=True)
+    LOG_FILE = user_data / 'restarter.log'
+    try:
+        LOG_FP = open(LOG_FILE, 'a', encoding='utf-8')
+    except Exception:
+        LOG_FP = None
+
+    started_ts = int(time.time())
+    print(f"\n=== restarter 启动 ts={started_ts} ===")
+    log(f"====== restarter 启动 (pid={os.getpid()}, platform={sys.platform}) ======")
     log(f"项目根目录: {project_root}")
 
-    # 1) kill 当前服务，释放端口
-    log("清理端口 8089 上的旧进程...")
-    kill_listeners_on_port()
-    if not wait_port_free():
-        err("端口 8089 长时间未释放，仍尝试继续（可能替换 .bin 失败）")
-    else:
-        log("端口 8089 已释放")
+    # 单实例锁：防止 HTTP trigger + 启动脚本并发导致的冲突（拿不到锁直接退出）
+    if not acquire_single_instance_lock(project_root):
+        log(f"检测到另一个 restarter 进程正在运行，本次退出避免冲突")
+        try:
+            if LOG_FP is not None:
+                LOG_FP.close()
+        except Exception:
+            pass
+        return 0
 
-    # 2) 应用更新（含回滚逻辑）
-    ok, msg = apply_update(project_root)
-    log(f"应用更新结果: ok={ok} - {msg}")
-
-    # 3) 启动新服务（即使更新回滚也要启动，保证用户能用）
-    proc = start_server(project_root)
-    if proc is None:
-        err("无法启动服务，restarter 中止")
-        return 2
-    log(f"服务进程已启动 PID={proc.pid}，等待就绪...")
-
-    # 4) 等待就绪
-    if wait_server_ready():
-        log("服务已就绪")
-    else:
-        err("服务长时间未就绪，仍尝试打开上传页（用户可手动刷新）")
-        # 极端兜底：如果更新后新 .bin 损坏，尝试自动回滚重启一次
-        backup_dir = project_root / '.bin_backup'
-        pending_marker = project_root / '.pending_update'
-        if pending_marker.exists() and backup_dir.exists():
-            log("检测到可能的更新失败，尝试最后一次回滚重启...")
+    # 解析参数
+    # 支持:  restarter.py [--delay-before-kill SEC] [--port PORT] [--kill-parent PID]
+    args = sys.argv[1:]
+    delay_before_kill = 1.2
+    port = 8089
+    kill_parent_pid = None
+    i = 0
+    while i < len(args):
+        a = args[i]
+        if a == '--delay-before-kill' and i + 1 < len(args):
             try:
-                kill_listeners_on_port()
-                wait_port_free()
-                bin_dir = project_root / '.bin'
-                if bin_dir.exists():
-                    shutil.rmtree(bin_dir, ignore_errors=True)
-                backup_dir.rename(bin_dir)
-                if backup_dir.exists():
-                    shutil.rmtree(backup_dir, ignore_errors=True)
-                # 清 marker
-                try:
-                    pending_marker.unlink()
-                except Exception:
-                    pass
-                proc2 = start_server(project_root)
-                if proc2 and wait_server_ready():
-                    log("兜底回滚重启成功！")
+                delay_before_kill = float(args[i + 1])
+            except Exception:
+                pass
+            i += 2
+        elif a == '--port' and i + 1 < len(args):
+            try:
+                port = int(args[i + 1])
+            except Exception:
+                pass
+            i += 2
+        elif a == '--kill-parent' and i + 1 < len(args):
+            try:
+                kill_parent_pid = int(args[i + 1])
+            except Exception:
+                pass
+            i += 2
+        else:
+            i += 1
+
+    # 启动前先把标记残留清掉（在 HTTP trigger 路径下，父进程会先调用 kill 自己，
+    #  但这里我们先确保在 apply_update 前的异常路径也会 cleanup 干净）
+    # 注意：不提前清，只 apply_update 会自动清；这里仅兜底：当 marker 存在但 bin_update 不存在时
+    # apply_update 里已经做了
+
+    try:
+        # 被 HTTP trigger 时：延迟一段时间让父进程把 HTTP 响应发完、再清理端口
+        if kill_parent_pid is not None or delay_before_kill > 0:
+            log(f"等待 {delay_before_kill:.1f}s 让父进程把 HTTP 响应发送完毕...")
+            time.sleep(delay_before_kill)
+
+        # 杀父进程（HTTP API trigger 时传入），避免旧服务占用端口
+        if kill_parent_pid is not None:
+            try:
+                if sys.platform.startswith('win'):
+                    subprocess.run(['taskkill', '/F', '/PID', str(kill_parent_pid)],
+                                   stderr=subprocess.DEVNULL)
                 else:
-                    err("兜底回滚也失败")
+                    subprocess.run(['kill', '-9', str(kill_parent_pid)],
+                                   stderr=subprocess.DEVNULL)
+                log(f"已终止父进程 PID={kill_parent_pid}")
+                time.sleep(0.4)
             except Exception as ex:
-                err(f"兜底回滚异常: {ex}")
+                log(f"终止父进程失败（忽略）: {ex}")
 
-    # 5) 打开上传页（不是首页）
-    open_upload_page()
+        # 清理端口占用
+        log(f"清理端口 {port} 上的旧进程...")
+        kill_port_holders(port, project_root)
+        time.sleep(0.3)
+        log(f"端口 {port} 已释放")
 
-    log("restarter 完成，退出。")
+        # 应用更新
+        update_result = apply_update(project_root)
+        log(f"应用更新结果: ok={update_result['ok']} - {update_result['message'] or '无待应用更新'}")
+        if not update_result['ok']:
+            err(f"应用更新失败: {update_result['message']}")
+
+        # 启动服务
+        start_server(project_root, port)
+
+    except Exception as ex:
+        err(f"restarter 异常: {ex}")
+        # 异常情况下也要清临时文件，避免卡壳
+        try:
+            cleanup_update_tempfiles(project_root)
+        except Exception:
+            pass
+        return 1
+    finally:
+        if LOG_FP is not None:
+            try:
+                LOG_FP.close()
+            except Exception:
+                pass
+    log(f"restarter 完成，退出。")
     return 0
 
 
 if __name__ == '__main__':
     try:
         sys.exit(main())
-    except Exception as _e:
-        err(f"restarter 顶层异常: {_e}")
-        sys.exit(99)
+    except KeyboardInterrupt:
+        sys.exit(0)

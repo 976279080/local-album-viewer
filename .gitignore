@@ -1,7 +1,12 @@
 /data/*
 /.user_data/previews/*
 /.user_data/db/*
+/.user_data/restarter.log
+/.user_data/restarter.lock
 .pytest_cache/
 /.tests
 /generate_license.html
 /.trae
+/.bin_update
+/.bin_orig
+/.pending_update

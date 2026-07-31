@@ -1275,3 +1275,7 @@ Traceback (most recent call last):
   File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 826, in write
     self._sock.sendall(b)
 BrokenPipeError: [Errno 32] Broken pipe
+2026-07-31 11:07:55 [INFO] main: 数据库初始化完成
+2026-07-31 11:07:55 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-31 11:24:16 [INFO] main: 数据库初始化完成
+2026-07-31 11:24:16 [INFO] main: 服务已启动: http://localhost:8089

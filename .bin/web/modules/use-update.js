@@ -1,0 +1,458 @@
+/**
+ * useUpdate —— 前端版本更新解耦模块
+ * 
+ * 单一职责：一切和「更新」相关的 UI / HTTP 调用，全部收拢在这里，和 upload.js 主业务解耦。
+ * 对外仅暴露 3 个入口 + 1 个调试对象：
+ *   - bindButtons(root)      绑定按钮点击事件（update.js 只需要在 init 里调用一次）
+ *   - initAutoCheck()        页面加载后自动检查一次更新（如有更新在按钮上加红点）
+ *   - forceCheckUpdate()     手动执行「检查更新」（用于按钮 onclick）
+ *   - _debug                 调试用：直接访问内部方法
+ * 
+ * 依赖（由外部注入，保持模块独立不依赖 upload.js 的闭包）：
+ *   - {showToast, getPassword, clearPassword, escapeHtml}
+ *   - Api 对象（Api.getPassword / Api.setPassword 等可选）
+ *   - API_SUMMARY 常量（默认 '/api/summary'）
+ */
+(function (global) {
+    'use strict';
+
+    // —— 模块内部依赖，init 时注入 ——
+    var _deps = {
+        showToast: function (msg, type) { try { global.alert(msg); } catch (_) {} },
+        getPassword: function () { return Promise.resolve(''); },
+        clearPassword: function () {},
+        escapeHtml: function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+            return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]);
+        }); },
+        API_SUMMARY: '/api/summary',
+    };
+
+    // —— 内部方法：1) checkUpdate  2) showVersionModal  3) doDownloadUpdate
+    //           4) showRestartCountdownModal  5) showDownloadSuccessModal（fallback）
+    //           6) safeReload —— 
+    async function checkUpdate() {
+        var btn = document.getElementById('checkUpdateBtn');
+        if (!btn) return;
+        var originalHTML = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-9-9c2.5 0 4.8 1 6.5 2.6"/><polyline points="21 4 21 10 15 10"/></svg>加载中...';
+
+        try {
+            var res = await fetch('/api/version/list');
+            var data = await res.json();
+            if (data.error) {
+                _deps.showToast('获取版本信息失败，请确认网络正常', 'error');
+                return;
+            }
+            showVersionModal(data);
+        } catch (e) {
+            _deps.showToast('检查更新失败，请确认网络正常', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalHTML;
+        }
+    }
+
+    function showVersionModal(data) {
+        var existing = document.getElementById('versionModal');
+        if (existing) existing.remove();
+
+        var localVersion = data.local_version || '未知';
+        var versions = data.versions || [];
+        var latestVersion = data.latest_version || '';
+        var esc = _deps.escapeHtml;
+
+        var versionsHtml = '';
+        if (versions.length === 0) {
+            versionsHtml = '<div class="version-empty">暂无版本信息</div>';
+        } else {
+            versionsHtml = versions.map(function (v) {
+                var isCurrent = v.version === localVersion;
+                var changelogHtml = (v.changelog || '暂无更新说明')
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/### (.+)/g, '<strong>$1</strong>')
+                    .replace(/^- (.+)$/gm, '<div class="changelog-item">• $1</div>');
+                var actionHtml = '';
+                if (isCurrent) {
+                    actionHtml = '<span class="version-current-tag">当前版本</span>';
+                } else if (v.download_url) {
+                    actionHtml =
+                        '<button class="version-update-btn" ' +
+                        'data-url="' + esc(v.download_url) + '" ' +
+                        'data-version="' + esc(v.version) + '"' +
+                        '>更新到此版本</button>';
+                } else {
+                    actionHtml = '<span class="version-no-download">暂无下载地址</span>';
+                }
+                return (
+                    '<div class="version-item' + (isCurrent ? ' current' : '') + '">' +
+                        '<div class="version-item-header">' +
+                            '<span class="version-number">v' + esc(v.version) + '</span>' +
+                            '<span class="version-date">' + esc(v.date || '') + '</span>' +
+                            actionHtml +
+                        '</div>' +
+                        '<div class="version-changelog">' + changelogHtml + '</div>' +
+                    '</div>'
+                );
+            }).join('');
+        }
+
+        var hasUpdate = latestVersion && latestVersion !== localVersion;
+
+        var modal = document.createElement('div');
+        modal.className = 'version-modal';
+        modal.id = 'versionModal';
+        modal.innerHTML =
+            '<div class="version-modal-mask"></div>' +
+            '<div class="version-modal-content">' +
+                '<div class="version-modal-header">' +
+                    '<h3>版本更新</h3>' +
+                    '<button class="version-modal-close">&times;</button>' +
+                '</div>' +
+                '<div class="version-modal-current">' +
+                    '当前版本：<span class="version-current-badge">v' + esc(localVersion) + '</span>' +
+                    (hasUpdate ? '<span class="version-new-badge">有新版本 v' + esc(latestVersion) + '</span>' : '<span class="version-latest-badge">已是最新</span>') +
+                '</div>' +
+                '<div class="version-modal-tip">下载更新包后将自动重启并应用（旧版本会备份，可手动回退）</div>' +
+                '<div class="version-modal-list">' + versionsHtml + '</div>' +
+            '</div>';
+
+        document.body.appendChild(modal);
+
+        modal.querySelector('.version-modal-mask').onclick = function () { modal.remove(); };
+        modal.querySelector('.version-modal-close').onclick = function () { modal.remove(); };
+
+        var updateBtns = modal.querySelectorAll('.version-update-btn');
+        for (var i = 0; i < updateBtns.length; i++) {
+            updateBtns[i].onclick = doDownloadUpdate;
+        }
+    }
+
+    /**
+     * 主流程：下载 → trigger-restart → 倒计时进度环 → 探活 reload
+     */
+    async function doDownloadUpdate(ev) {
+        var btn = ev && ev.currentTarget;
+        var url = btn ? btn.getAttribute('data-url') || '' : '';
+        var version = btn ? btn.getAttribute('data-version') || '' : '';
+        if (!url) return;
+
+        // 1) 获取密码
+        var pwd = await _deps.getPassword();
+        if (!pwd) return;
+
+        // 2) 按钮 loading
+        var btns = document.querySelectorAll('#versionModal .version-update-btn');
+        var originalText = btn ? btn.textContent : '';
+        btns.forEach(function (b) { b.disabled = true; });
+        if (btn) btn.textContent = '下载中...';
+
+        try {
+            var res = await fetch('/api/version/download', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-Auth': pwd },
+                body: JSON.stringify({ download_url: url, version: version }),
+            });
+            var payload = null;
+            try { payload = await res.json(); } catch (_) {}
+
+            if (res.status === 401) {
+                _deps.clearPassword();
+                _deps.showToast('密码错误，无法执行更新', 'error');
+                return;
+            }
+            if (!payload) {
+                _deps.showToast('更新失败：服务端无响应', 'error');
+                return;
+            }
+
+            var restartRequired = !!payload.restart_required;
+            if (!payload.success) {
+                if (!restartRequired) {
+                    _deps.showToast(payload.message || '更新失败', 'error');
+                    return;
+                }
+            }
+
+            // → trigger-restart：后端先回 HTTP 响应，再 fork restarter 终止父进程
+            var restartRes = await fetch('/api/version/trigger-restart', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-Auth': pwd },
+                body: JSON.stringify({ port: location.port ? parseInt(location.port, 10) : 8089 }),
+            }).catch(function () { return null; });
+
+            var restartPayload = null;
+            if (restartRes && restartRes.ok) {
+                try { restartPayload = await restartRes.json(); } catch (_) {}
+            }
+
+            // 优先走「倒计时进度环 + 自动 reload」；只有 trigger-restart 接口不存在时才 fallback
+            if (restartRes && restartRes.ok) {
+                showRestartCountdownModal({
+                    estimatedMs: (restartPayload && restartPayload.restart_in_ms) ? restartPayload.restart_in_ms + 18000 : 20000,
+                    port: location.port ? parseInt(location.port, 10) : 8089,
+                    restartPayload: restartPayload,
+                    prepareMsg: payload.message || '更新包已准备完成，正在重启...',
+                });
+            } else {
+                showDownloadSuccessModal(payload.message || '更新包已准备完成，请关闭浏览器并重新双击启动脚本以应用更新');
+            }
+        } catch (e) {
+            _deps.showToast('更新失败：' + (e && e.message ? e.message : '网络错误'), 'error');
+        } finally {
+            btns.forEach(function (b) { b.disabled = false; });
+            if (btn) btn.textContent = originalText;
+        }
+    }
+
+    function showRestartCountdownModal(opts) {
+        opts = opts || {};
+        var esc = _deps.escapeHtml;
+        var estimatedMs = Math.max(8000, parseInt(opts.estimatedMs, 10) || 20000);
+        var port = opts.port || 8089;
+        var vmodal = document.getElementById('versionModal');
+        if (vmodal) vmodal.remove();
+        var old = document.getElementById('restartCountdownModal');
+        if (old) old.remove();
+
+        var m = document.createElement('div');
+        m.className = 'version-modal';
+        m.id = 'restartCountdownModal';
+        m.innerHTML =
+            '<div class="version-modal-mask"></div>' +
+            '<div class="version-modal-content" style="max-width:420px;text-align:center;">' +
+                '<div class="version-modal-header">' +
+                    '<h3 id="restartModalTitle">正在应用更新</h3>' +
+                '</div>' +
+                '<div style="padding:8px 0 6px;">' +
+                    '<div class="countdown-ring-wrap" style="position:relative;width:140px;height:140px;margin:8px auto 4px;display:inline-block;">' +
+                        '<svg class="countdown-ring" width="140" height="140" viewBox="0 0 140 140" style="transform:rotate(-90deg);">' +
+                            '<circle class="countdown-ring-bg" cx="70" cy="70" r="58" fill="none" stroke="#e5e7eb" stroke-width="10" />' +
+                            '<circle id="restartCountdownRing" class="countdown-ring-fg" cx="70" cy="70" r="58" fill="none" stroke="#10b981" stroke-width="10" stroke-linecap="round" ' +
+                                'stroke-dasharray="364.42" stroke-dashoffset="0" ' +
+                                'style="transition: stroke-dashoffset 0.25s linear;" />' +
+                        '</svg>' +
+                        '<div class="countdown-ring-text" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;">' +
+                            '<div id="restartCountdown" style="font-size:26px;font-weight:700;color:#111827;line-height:1;">--</div>' +
+                            '<div style="font-size:12px;color:#6b7280;margin-top:2px;">秒后自动刷新</div>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>' +
+                '<div id="restartMsg" style="line-height:1.7;font-size:14px;color:#334155;margin:6px 0 8px;">' +
+                    esc(opts.prepareMsg || '正在重启服务并应用更新...') +
+                '</div>' +
+                '<div style="display:flex;gap:10px;justify-content:center;">' +
+                    '<button class="version-update-btn" id="restartCancelBtn" style="padding:8px 16px;border:1px solid #d1d5db;border-radius:8px;background:white;cursor:pointer;color:#374151;">取消</button>' +
+                    '<button class="version-update-btn" id="restartRefreshBtn" style="padding:8px 18px;border:none;border-radius:8px;background:#10b981;color:white;cursor:pointer;">立即刷新</button>' +
+                '</div>' +
+            '</div>';
+        document.body.appendChild(m);
+
+        var ring = document.getElementById('restartCountdownRing');
+        var countdownEl = document.getElementById('restartCountdown');
+        var msgEl = document.getElementById('restartMsg');
+        var titleEl = document.getElementById('restartModalTitle');
+        var cancelBtn = document.getElementById('restartCancelBtn');
+        var refreshBtn = document.getElementById('restartRefreshBtn');
+        var CIRC = 364.42;
+        function close() { try { m.remove(); } catch (_) {} }
+
+        cancelBtn.onclick = function () { close(); };
+        refreshBtn.onclick = function () { location.reload(true); };
+        m.querySelector('.version-modal-mask').onclick = function () { /* 不允许点遮罩关闭 */ };
+
+        var startTime = Date.now();
+        var stopped = false;
+        var timers = [];
+
+        function setRing(pct) {
+            var offset = Math.max(0, Math.min(1, pct)) * CIRC;
+            if (ring) ring.setAttribute('stroke-dashoffset', offset.toFixed(2));
+            var remainSec = Math.max(0, Math.ceil((1 - Math.max(0, Math.min(1, pct))) * (estimatedMs / 1000)));
+            if (countdownEl) countdownEl.textContent = String(remainSec);
+        }
+
+        function pollOnce() {
+            if (stopped) return;
+            var url = (_deps.API_SUMMARY || '/api/summary') + '?_=' + Date.now();
+            fetch(url, { cache: 'no-store', credentials: 'same-origin' })
+                .then(function (r) {
+                    if (!r.ok) throw new Error('not ok');
+                    return r.text();
+                })
+                .then(function (txt) {
+                    if (stopped) return;
+                    if (txt && txt.length > 0) {
+                        stopped = true;
+                        try {
+                            if (titleEl) titleEl.textContent = '更新完成';
+                            if (msgEl) msgEl.textContent = '服务已恢复，即将自动刷新页面...';
+                        } catch (_) {}
+                        timers.forEach(function (t) { try { clearInterval(t); clearTimeout(t); } catch (_) {} });
+                        timers = [];
+                        safeReload(0, close, msgEl, refreshBtn);
+                    }
+                })
+                .catch(function () { /* 未恢复，下一轮 */ });
+        }
+
+        setRing(0);
+        timers.push(setInterval(function () {
+            if (stopped) return;
+            var elapsed = Date.now() - startTime;
+            var pct = Math.max(0, Math.min(1, elapsed / estimatedMs));
+            setRing(pct);
+            if (pct >= 1) {
+                try {
+                    if (titleEl) titleEl.textContent = '等待服务恢复';
+                    if (msgEl) msgEl.textContent = '服务重启时间较长，正在持续检测恢复，或点击"立即刷新"手动刷新页面';
+                } catch (_) {}
+            }
+        }, 250));
+
+        timers.push(setTimeout(function () {
+            pollOnce();
+            var maxPollUntil = Date.now() + 90000;
+            var pollInterval = setInterval(function () {
+                if (stopped) {
+                    try { clearInterval(pollInterval); } catch (_) {}
+                    return;
+                }
+                if (Date.now() > maxPollUntil) {
+                    try { clearInterval(pollInterval); } catch (_) {}
+                    if (!stopped && msgEl) {
+                        msgEl.textContent = '检测超时，请点击"立即刷新"查看页面，若无法打开请手动重启启动脚本';
+                    }
+                    return;
+                }
+                pollOnce();
+            }, 800);
+            timers.push(pollInterval);
+        }, 1200));
+    }
+
+    /**
+     * safeReload —— 服务端端口重新 bind 后再 reload，避免 Chrome 错误页
+     */
+    function safeReload(attempt, close, msgEl, refreshBtn) {
+        attempt = attempt || 0;
+        if (attempt > 10) {
+            try {
+                if (msgEl) msgEl.innerHTML = '服务已恢复，请<a href="' + location.pathname + '" style="color:#10b981;text-decoration:underline;">点此手动刷新页面</a>';
+                if (refreshBtn) refreshBtn.style.display = '';
+            } catch (_) {}
+            return;
+        }
+        var probeUrl = (_deps.API_SUMMARY || '/api/summary') + '?_=' + Date.now() + '&_retry=' + attempt;
+        fetch(probeUrl, { cache: 'no-store', credentials: 'same-origin' })
+            .then(function (r) {
+                if (!r.ok) throw new Error('not ok');
+                return r.text();
+            })
+            .then(function (t) {
+                if (!t || t.length === 0) throw new Error('empty');
+                setTimeout(function () {
+                    try { close && close(); } catch (_) {}
+                    try { location.replace(location.pathname + location.search + location.hash); }
+                    catch (_) { try { location.reload(true); } catch (_2) {} }
+                }, 400);
+            })
+            .catch(function () { setTimeout(function () { safeReload(attempt + 1, close, msgEl, refreshBtn); }, 600); });
+    }
+
+    /**
+     * Fallback：只有后端老版本不支持 /api/version/trigger-restart 时才走到这里
+     */
+    function showDownloadSuccessModal(message) {
+        var vmodal = document.getElementById('versionModal');
+        if (vmodal) vmodal.remove();
+        var esc = _deps.escapeHtml;
+        var m = document.createElement('div');
+        m.className = 'version-modal';
+        m.innerHTML =
+            '<div class="version-modal-mask"></div>' +
+            '<div class="version-modal-content" style="max-width:420px;">' +
+                '<div class="version-modal-header">' +
+                    '<h3>更新已就绪</h3>' +
+                '</div>' +
+                '<div style="padding:8px 4px 20px;line-height:1.8;font-size:14px;color:#334155;">' +
+                    esc(message || '更新包已准备完成，请关闭浏览器并重新双击启动脚本以应用更新') +
+                    '<br/><br/>' +
+                    '<div style="background:#eff6ff;padding:12px 14px;border-radius:8px;border:1px solid #dbeafe;color:#1e40af;">' +
+                        '<strong>操作步骤：</strong><br/>' +
+                        '① 关闭当前页面<br/>' +
+                        '② 双击启动脚本（mac.command 或 windows.vbs）<br/>' +
+                        '③ 程序会自动替换新版本并打开' +
+                    '</div>' +
+                    '<div style="margin-top:12px;font-size:12px;color:#64748b;">' +
+                        '※ 旧版本会备份到 .bin_backup 目录，如更新失败可手动改回' +
+                    '</div>' +
+                '</div>' +
+                '<div style="display:flex;justify-content:flex-end;">' +
+                    '<button class="version-update-btn" id="okRestartBtn" style="background:#10b981;border:none;padding:10px 20px;border-radius:8px;color:white;cursor:pointer;font-size:14px;">我知道了</button>' +
+                '</div>' +
+            '</div>';
+        document.body.appendChild(m);
+        m.querySelector('.version-modal-mask').onclick = function () { m.remove(); };
+        m.querySelector('#okRestartBtn').onclick = function () { m.remove(); };
+    }
+
+    // —— 对外公开接口 ——
+    function bindButtons(root) {
+        var btn = (root || document).getElementById('checkUpdateBtn');
+        if (btn) {
+            btn.addEventListener('click', forceCheckUpdate);
+        }
+    }
+
+    function initAutoCheck() {
+        // 静默检查：如果有更新，在按钮上加个红点
+        try {
+            fetch('/api/version/list', { cache: 'no-store' })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (!data || data.error) return;
+                    var local = data.local_version || '';
+                    var latest = data.latest_version || '';
+                    if (latest && local && latest !== local) {
+                        var btn = document.getElementById('checkUpdateBtn');
+                        if (btn && btn.innerHTML.indexOf('●') === -1) {
+                            btn.innerHTML = (btn.innerHTML || '检查更新').replace(/检查更新/, '检查更新 <span style="color:#ef4444;">●</span>');
+                        }
+                    }
+                })
+                .catch(function () { /* 静默忽略 */ });
+        } catch (_) {}
+    }
+
+    function forceCheckUpdate() {
+        return checkUpdate();
+    }
+
+    // —— 初始化入口：接收外部依赖注入 ——
+    function useUpdate(deps) {
+        if (deps) {
+            if (typeof deps.showToast === 'function') _deps.showToast = deps.showToast;
+            if (typeof deps.getPassword === 'function') _deps.getPassword = deps.getPassword;
+            if (typeof deps.clearPassword === 'function') _deps.clearPassword = deps.clearPassword;
+            if (typeof deps.escapeHtml === 'function') _deps.escapeHtml = deps.escapeHtml;
+            if (typeof deps.API_SUMMARY === 'string' && deps.API_SUMMARY) _deps.API_SUMMARY = deps.API_SUMMARY;
+        }
+        return {
+            bindButtons: bindButtons,
+            initAutoCheck: initAutoCheck,
+            forceCheckUpdate: forceCheckUpdate,
+            _debug: {
+                checkUpdate: checkUpdate,
+                doDownloadUpdate: doDownloadUpdate,
+                showDownloadSuccessModal: showDownloadSuccessModal,
+                showRestartCountdownModal: showRestartCountdownModal,
+            },
+        };
+    }
+
+    if (typeof module !== 'undefined' && module.exports) module.exports = useUpdate;
+    else global.useUpdate = useUpdate;
+})(typeof window !== 'undefined' ? window : this);
