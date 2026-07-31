@@ -10,3 +10,4 @@
 /.bin_update
 /.bin_orig
 /.pending_update
+/.bin/server.log
