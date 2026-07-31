@@ -28,8 +28,7 @@
     };
 
     // —— 内部方法：1) checkUpdate  2) showVersionModal  3) doDownloadUpdate
-    //           4) showRestartCountdownModal  5) showDownloadSuccessModal（fallback）
-    //           6) safeReload —— 
+    //           4) showRestartCountdownModal  5) safeReload —— 
     async function checkUpdate() {
         var btn = document.getElementById('checkUpdateBtn');
         if (!btn) return;
@@ -188,17 +187,15 @@
                 try { restartPayload = await restartRes.json(); } catch (_) {}
             }
 
-            // 优先走「倒计时进度环 + 自动 reload」；只有 trigger-restart 接口不存在时才 fallback
-            if (restartRes && restartRes.ok) {
-                showRestartCountdownModal({
-                    estimatedMs: (restartPayload && restartPayload.restart_in_ms) ? restartPayload.restart_in_ms + 18000 : 20000,
-                    port: location.port ? parseInt(location.port, 10) : 8089,
-                    restartPayload: restartPayload,
-                    prepareMsg: payload.message || '更新包已准备完成，正在重启...',
-                });
-            } else {
-                showDownloadSuccessModal(payload.message || '更新包已准备完成，请关闭浏览器并重新双击启动脚本以应用更新');
-            }
+            // 一律走「倒计时进度环 + 自动 reload」——即使 trigger-restart 接口暂时失败（比如
+            // 父进程已在 kill 过程中导致 fetch 报错），也会持续探活，服务恢复后自动 reload
+            // （完全移除 showDownloadSuccessModal fallback，不允许出现"请关闭浏览器双击启动"）
+            showRestartCountdownModal({
+                estimatedMs: (restartPayload && restartPayload.restart_in_ms) ? restartPayload.restart_in_ms + 18000 : 20000,
+                port: location.port ? parseInt(location.port, 10) : 8089,
+                restartPayload: restartPayload,
+                prepareMsg: payload.message || '更新包已准备完成，正在重启...',
+            });
         } catch (e) {
             _deps.showToast('更新失败：' + (e && e.message ? e.message : '网络错误'), 'error');
         } finally {
@@ -362,43 +359,6 @@
             .catch(function () { setTimeout(function () { safeReload(attempt + 1, close, msgEl, refreshBtn); }, 600); });
     }
 
-    /**
-     * Fallback：只有后端老版本不支持 /api/version/trigger-restart 时才走到这里
-     */
-    function showDownloadSuccessModal(message) {
-        var vmodal = document.getElementById('versionModal');
-        if (vmodal) vmodal.remove();
-        var esc = _deps.escapeHtml;
-        var m = document.createElement('div');
-        m.className = 'version-modal';
-        m.innerHTML =
-            '<div class="version-modal-mask"></div>' +
-            '<div class="version-modal-content" style="max-width:420px;">' +
-                '<div class="version-modal-header">' +
-                    '<h3>更新已就绪</h3>' +
-                '</div>' +
-                '<div style="padding:8px 4px 20px;line-height:1.8;font-size:14px;color:#334155;">' +
-                    esc(message || '更新包已准备完成，请关闭浏览器并重新双击启动脚本以应用更新') +
-                    '<br/><br/>' +
-                    '<div style="background:#eff6ff;padding:12px 14px;border-radius:8px;border:1px solid #dbeafe;color:#1e40af;">' +
-                        '<strong>操作步骤：</strong><br/>' +
-                        '① 关闭当前页面<br/>' +
-                        '② 双击启动脚本（mac.command 或 windows.vbs）<br/>' +
-                        '③ 程序会自动替换新版本并打开' +
-                    '</div>' +
-                    '<div style="margin-top:12px;font-size:12px;color:#64748b;">' +
-                        '※ 旧版本会备份到 .bin_backup 目录，如更新失败可手动改回' +
-                    '</div>' +
-                '</div>' +
-                '<div style="display:flex;justify-content:flex-end;">' +
-                    '<button class="version-update-btn" id="okRestartBtn" style="background:#10b981;border:none;padding:10px 20px;border-radius:8px;color:white;cursor:pointer;font-size:14px;">我知道了</button>' +
-                '</div>' +
-            '</div>';
-        document.body.appendChild(m);
-        m.querySelector('.version-modal-mask').onclick = function () { m.remove(); };
-        m.querySelector('#okRestartBtn').onclick = function () { m.remove(); };
-    }
-
     // —— 对外公开接口 ——
     function bindButtons(root) {
         var btn = (root || document).getElementById('checkUpdateBtn');
@@ -447,7 +407,6 @@
             _debug: {
                 checkUpdate: checkUpdate,
                 doDownloadUpdate: doDownloadUpdate,
-                showDownloadSuccessModal: showDownloadSuccessModal,
                 showRestartCountdownModal: showRestartCountdownModal,
             },
         };

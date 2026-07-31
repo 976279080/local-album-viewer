@@ -1279,3 +1279,5 @@ BrokenPipeError: [Errno 32] Broken pipe
 2026-07-31 11:07:55 [INFO] main: 服务已启动: http://localhost:8089
 2026-07-31 11:24:16 [INFO] main: 数据库初始化完成
 2026-07-31 11:24:16 [INFO] main: 服务已启动: http://localhost:8089
+2026-07-31 12:00:48 [INFO] main: 数据库初始化完成
+2026-07-31 12:00:48 [INFO] main: 服务已启动: http://localhost:8089
