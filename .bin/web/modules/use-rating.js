@@ -86,32 +86,36 @@
                     return;
                 }
                 if (result.ok) {
-                    photo.rating = val;
-                    const aIdx = albumPhotos.value.findIndex(p => p.path_key === photo.path_key);
-                    if (aIdx >= 0) {
-                        albumPhotos.value[aIdx].rating = val;
-                        albumPhotos.value = [...albumPhotos.value];
-                    }
+                    const wasCollapsed = oldRating < 0;
+                    const isCollapsed = val < 0;
+
+                    // 用新对象替换旧对象，确保 v-memo 能检测到引用变化
+                    albumPhotos.value = albumPhotos.value.map(p =>
+                        p.path_key === photo.path_key
+                            ? { ...p, rating: val, _lastModified: (!wasCollapsed && isCollapsed) || (wasCollapsed && !isCollapsed) ? Date.now() : p._lastModified }
+                            : p
+                    );
+                    basePhotos.value = basePhotos.value.map(p =>
+                        p.path_key === photo.path_key
+                            ? { ...p, rating: val, _lastModified: (!wasCollapsed && isCollapsed) || (wasCollapsed && !isCollapsed) ? Date.now() : p._lastModified }
+                            : p
+                    );
+
+                    // 折叠/展开时调整位置
                     const idx = basePhotos.value.findIndex(p => p.path_key === photo.path_key);
                     if (idx >= 0) {
-                        const photoObj = basePhotos.value[idx];
-                        photoObj.rating = val;
-                        const wasCollapsed = oldRating < 0;
-                        const isCollapsed = val < 0;
-
                         if (!wasCollapsed && isCollapsed) {
-                            photoObj._lastModified = Date.now();
                             const [moved] = basePhotos.value.splice(idx, 1);
                             basePhotos.value.unshift(moved);
                         } else if (wasCollapsed && !isCollapsed) {
-                            photoObj._lastModified = Date.now();
                             const [moved] = basePhotos.value.splice(idx, 1);
                             basePhotos.value.push(moved);
                         }
-
-                        basePhotos.value = [...basePhotos.value];
-                        refreshComputedCallback();
                     }
+
+                    basePhotos.value = [...basePhotos.value];
+                    refreshComputedCallback();
+
                     if (ui.detailPhoto && ui.detailPhoto.path_key === photo.path_key) {
                         ui.detailPhoto.rating = val;
                         if (ui.originalDetailPhoto) {
