@@ -646,6 +646,43 @@
             }
         }
 
+        // ============ 详情页评分 ============
+        async function setDetailRating(val) {
+            if (!detailState.detailPhoto) return;
+            const oldRating = detailState.detailPhoto.rating || 0;
+            if (oldRating === val) return;
+
+            const pathKey = detailState.detailPhoto.path_key;
+
+            const password = Api.getPassword();
+            if (!password) {
+                const pwd = await getPassword();
+                if (!pwd) return;
+            }
+
+            try {
+                const result = await Api.updatePhoto(
+                    { path_key: pathKey, rating: val },
+                    Api.getPassword()
+                );
+                if (Api.isUnauthorized(result)) {
+                    clearPassword();
+                    showToast('密码错误', 'error');
+                    return;
+                }
+                if (result.ok) {
+                    detailState.detailPhoto.rating = val;
+                    if (detailState.originalDetailPhoto) {
+                        detailState.originalDetailPhoto.rating = val;
+                    }
+                    updatePhotoInListsFn(pathKey, { rating: val });
+                }
+            } catch (e) {
+                console.error(e);
+                showToast('评分修改失败', 'error');
+            }
+        }
+
         // ============ 列表更新辅助函数 ============
         function updatePhotoInList(updatedPhoto) {
             basePhotos.value = basePhotos.value.filter(p => p.id !== updatedPhoto.id);
@@ -745,6 +782,8 @@
             // 评论
             addComment,
             deleteComment,
+            // 评分
+            setDetailRating,
             // 时间编辑
             initEditCreateTime,
             formatEditTime,

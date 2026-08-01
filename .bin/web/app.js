@@ -279,6 +279,7 @@ const app = createApp({
             deletePhoto,
             addComment,
             deleteComment,
+            setDetailRating,
             initEditCreateTime,
             formatEditTime,
             triggerTimePicker,
@@ -595,6 +596,8 @@ const app = createApp({
             // 评论
             addComment,
             deleteComment,
+            // 详情页评分
+            setDetailRating,
             // 批量操作
             showBatchTagModal,
             closeBatchTagModal,

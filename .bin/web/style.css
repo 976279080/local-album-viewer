@@ -755,6 +755,32 @@ body.detail-open #app { overflow-y: hidden; }
     font-size: var(--font-size-md);
     color: var(--color-text-primary, #333);
 }
+
+/* 详情页评分 */
+.detail-rating-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+}
+.detail-rating-option {
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: var(--radius-sm);
+    transition: background 0.15s;
+}
+.detail-rating-option:hover { background: rgba(0,0,0,0.05); }
+.detail-rating-option.active { background: rgba(255,82,82,0.1); }
+.detail-rating-option svg { width: 26px; height: 26px; }
+.detail-rating-readonly {
+    display: flex;
+    align-items: center;
+    flex: 1;
+}
+.detail-rating-readonly svg { width: 26px; height: 26px; }
+
 .tag-chip-container {
     display: flex;
     flex-wrap: wrap;
