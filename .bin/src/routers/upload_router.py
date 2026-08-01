@@ -3,9 +3,12 @@
 """上传与照片写操作路由 Mixin"""
 
 import json
+import traceback
 from typing import Dict, Any
 
-from utils import parse_multipart
+from utils import parse_multipart, get_logger
+
+_logger = get_logger('upload_router')
 
 
 class UploadRouterMixin:
@@ -160,3 +163,6 @@ class UploadRouterMixin:
             self.send_json({'status': 'ok', 'meta': meta})
         except ValueError as e:
             self.send_error_json(str(e))
+        except Exception as e:
+            _logger.error(f"handle_update 异常 path_key={path_key}: {e}\n{traceback.format_exc()}")
+            self.send_error_json(f'修改失败: {str(e)}')

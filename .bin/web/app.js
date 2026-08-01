@@ -316,7 +316,12 @@ const app = createApp({
 
         const editMode = ref(hasPassword());
 
-        const canEditTime = computed(() => editMode.value && canEditTimeBase.value);
+        const canEditTime = computed(() => {
+            if (!editMode.value) return false;
+            const p = detailState.detailPhoto;
+            if (!p) return false;
+            return (p.edit_count || 0) < 2;
+        });
 
         async function toggleEditMode() {
             if (editMode.value) {

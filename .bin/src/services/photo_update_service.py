@@ -200,15 +200,17 @@ class PhotoUpdateService:
         album_name = album['name'] if album else str(photo['album_id'])
 
         if new_year != photo['year']:
+            old_year = photo['year']
+            old_filename = photo['filename']
             if file_operations is not None:
-                file_operations.append(
-                    lambda: self._move_photo_files_to_new_year(
-                        photo['album_id'], photo_id, album_name,
-                        photo['year'], new_year, photo['filename']
-                    )
-                )
+                # 立即求值 old_year / old_filename 作为闭包参数，
+                # 避免后续 _handle_create_time_update L98-102 覆写 photo 后读取到已更新的值
+                def _move(_album_id=photo['album_id'], _photo_id=photo_id, _album=album_name,
+                         _old_year=old_year, _new_year=new_year, _fname=old_filename):
+                    self._move_photo_files_to_new_year(_album_id, _photo_id, _album, _old_year, _new_year, _fname)
+                file_operations.append(_move)
             else:
-                self._move_photo_files_to_new_year(photo['album_id'], photo_id, album_name, photo['year'], new_year, photo['filename'])
+                self._move_photo_files_to_new_year(photo['album_id'], photo_id, album_name, old_year, new_year, old_filename)
 
         self._update_create_time_in_db(photo_id, new_time_ts, new_year, edit_count, conn)
 

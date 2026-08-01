@@ -519,6 +519,10 @@
                         await loadPhotosCallback();
                         showToast('时间修改成功', 'success');
                     }
+                } else if (Api.isUnauthorized(result)) {
+                    clearPassword();
+                    showToast('密码错误，请重新输入', 'error');
+                    initEditCreateTime();
                 } else {
                     const err = result.data || {};
                     showToast(err.error || '时间修改失败', 'error');
