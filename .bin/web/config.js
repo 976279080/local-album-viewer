@@ -74,7 +74,7 @@ window.APP_CONFIG = {
         batchDelete: '/api/batch-delete',
         batchClearTags: '/api/batch-clear-tags',
         upload: '/api/upload',
-        renameAlbum: '/api/rename-album'
+        renameAlbum: '/api/albums/rename'
     },
 
     // ========== 认证 ==========
