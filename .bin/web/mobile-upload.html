@@ -6,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>手机上传 - 无联网相册</title>
-    <link rel="stylesheet" href="mobile-upload.css">
+    <link rel="stylesheet" href="mobile-upload.css?v=3">
     <script src="config.js"></script>
     <script src="exifr.js"></script>
     <script src="media-processor.js"></script>
@@ -33,7 +33,7 @@
 
                 <div class="m-field">
                     <label class="m-label">选择照片 / 视频</label>
-                    <div class="m-dropzone" id="mDropzone">
+                    <div class="m-dropzone" id="mDropzoneFile">
                         <div class="m-ic">
                             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -42,9 +42,10 @@
                             </svg>
                         </div>
                         <div class="m-dz-text">点击选择照片或视频</div>
-                        <div class="m-dz-sub">从相册中选择图片或视频，支持批量选择</div>
-                        <input type="file" id="mFileInput" multiple style="display:none">
+                        <div class="m-dz-sub">支持批量选择，可多次点击累加</div>
+                        <input type="file" id="mFileInput" multiple class="m-input-hidden" onchange="window.__MobileUpload && window.__MobileUpload.handleFileChange && window.__MobileUpload.handleFileChange(this)">
                     </div>
+                    <div class="m-dz-tip" id="mWechatTip"></div>
                     <div class="m-file-list" id="mFileList"></div>
                 </div>
 
@@ -94,11 +95,37 @@
             document.getElementById('mStatus').className = 'm-status m-status-warn';
         }
 
+        // 检测微信内置浏览器：引导用户点击右上角「···」在浏览器打开
+        var ua = navigator.userAgent || '';
+        var isWeChat = ua.indexOf('MicroMessenger') >= 0;
+        if (isWeChat) {
+            var tipEl = document.getElementById('mWechatTip');
+            if (tipEl) tipEl.style.display = 'none';
+            // 全屏黑色遮罩(0.88) + 居上居右白色圆角文字框 + 垂直直线箭头
+            var overlay = document.createElement('div');
+            overlay.className = 'm-wx-overlay';
+            overlay.innerHTML =
+                // 垂直直线箭头：起点=文字框右上角，终点=微信自带「···」下方
+                '<svg class="m-wx-arrow" viewBox="0 0 20 90">' +
+                    '<line x1="10" y1="88" x2="10" y2="14" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>' +
+                    '<path d="M 10 4 L 5 14 L 15 14 Z" fill="#fff"/>' +
+                '</svg>' +
+                // 文字框：居上居右，白色实体矩形圆角聚光灯效果
+                '<div class="m-wx-textbox">' +
+                    '<div class="m-wx-line">选择右上角「<b>···</b>」</div>' +
+                    '<div class="m-wx-line">选择「<b>在浏览器打开</b>」</div>' +
+                '</div>';
+            document.body.appendChild(overlay);
+        } else {
+            var tipEl2 = document.getElementById('mWechatTip');
+            if (tipEl2) tipEl2.style.display = 'none';
+        }
+
         var XHR_TIMEOUT_MS = 300000;
 
         var albumSelect = document.getElementById('mAlbumSelect');
         var newAlbumInput = document.getElementById('mNewAlbum');
-        var dropzone = document.getElementById('mDropzone');
+        var dropzoneFile = document.getElementById('mDropzoneFile');
         var fileInput = document.getElementById('mFileInput');
         var fileListEl = document.getElementById('mFileList');
         var submitBtn = document.getElementById('mSubmit');
@@ -112,6 +139,101 @@
 
         var selectedFiles = [];
         var isUploading = false;
+        var _lastFileClickMs = 0;
+        var ENABLE_SELECT_TOAST = true;
+        var DEBUG_TOAST = true; // 调试：确认鸿蒙是否触发了 change 事件
+        var ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/heic', 'image/heif'];
+        var ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/mpeg', 'video/quicktime', 'video/mov', 'video/avi', 'video/x-matroska', 'video/webm', 'video/3gpp'];
+
+        // 已选文件去重 key（name+size+lastModified 组合），防重复添加
+        // 注意：name 或 size 缺失时返回空串，不做去重（鸿蒙可能返回不完整元数据）
+        var _selectedKeys = {};
+        function getFileKey(f) {
+            if (!f) return '';
+            var name = f.name;
+            var size = f.size;
+            if (!name || !size) return '';
+            return String(name) + '|' + String(size) + '|' + String(f.lastModified || 0);
+        }
+
+        function isAllowedType(f) {
+            if (!f) return false;
+            var type = f.type ? String(f.type).toLowerCase() : '';
+            if (type) {
+                if (type.startsWith('image/')) return ALLOWED_IMAGE_TYPES.indexOf(type) >= 0 || type === 'image/*';
+                if (type.startsWith('video/')) return ALLOWED_VIDEO_TYPES.indexOf(type) >= 0 || type === 'video/*';
+            }
+            var name = String(f.name || '').toLowerCase();
+            if (/\.(jpe?g|png|gif|webp|heic|heif|bmp)$/i.test(name)) return true;
+            if (/\.(mp4|mov|mpeg|mpg|avi|mkv|webm|3gp|3gpp|m4v)$/i.test(name)) return true;
+            return false;
+        }
+
+        // 标记当前正在等待选择的 input 和类型
+        // 部分系统（如鸿蒙）change 事件可能不触发，用 visibilitychange 做兜底
+        var _pendingInput = null;
+        var _pendingKind = '';
+        var _pendingProcessed = false; // 防止 change + visibilitychange 双重处理
+
+        // 对外暴露，供 HTML 内联 onchange 使用
+        window.__MobileUpload = {
+            handleImgChange: function (inputEl) {
+                if (_pendingProcessed) return;
+                _pendingProcessed = true;
+                if (DEBUG_TOAST) toast('触发 change 事件（照片）', 'info');
+                _dispatchSelection(inputEl, 'image');
+            },
+            handleVidChange: function (inputEl) {
+                if (_pendingProcessed) return;
+                _pendingProcessed = true;
+                if (DEBUG_TOAST) toast('触发 change 事件（视频）', 'info');
+                _dispatchSelection(inputEl, 'video');
+            },
+            handleFileChange: function (inputEl) {
+                if (_pendingProcessed) return;
+                _pendingProcessed = true;
+                if (DEBUG_TOAST) toast('触发 change 事件（文件管理器）', 'info');
+                _dispatchSelection(inputEl, 'any');
+            }
+        };
+
+        function _dispatchSelection(inputEl, expectedKind) {
+            if (!inputEl) return;
+            var files = inputEl.files;
+            if (!files || files.length === 0) return;
+            // 立即把 FileList 拷贝成数组，避免后续异步访问时被 WebView 清空
+            var arr = [];
+            var len = 0;
+            try { len = files.length; } catch (_) { len = 0; }
+            for (var j = 0; j < len; j++) {
+                try { arr.push(files[j]); } catch (e) {
+                    if (DEBUG_TOAST) toast('第 ' + (j + 1) + ' 个文件读取失败', 'warn');
+                }
+            }
+            if (DEBUG_TOAST) toast('读取到 ' + arr.length + ' 个文件', arr.length > 0 ? 'info' : 'warn');
+            if (arr.length === 0) return;
+            addFiles(arr, expectedKind);
+            // 延迟清空 input.value，让其他事件处理器也能读到 files
+            setTimeout(function () { try { inputEl.value = ''; } catch (_) {} }, 100);
+        }
+
+        // visibilitychange 兜底：鸿蒙 change 事件不触发时，用户从文件选择器返回页面时检测 input.files
+        document.addEventListener('visibilitychange', function () {
+            if (document.visibilityState === 'visible' && _pendingInput && !_pendingProcessed) {
+                // 延迟 200ms 等待 change 事件先触发（如果会触发的话）
+                setTimeout(function () {
+                    if (!_pendingProcessed && _pendingInput) {
+                        try {
+                            if (_pendingInput.files && _pendingInput.files.length > 0) {
+                                _pendingProcessed = true;
+                                if (DEBUG_TOAST) toast('visibilitychange 检测到 ' + _pendingInput.files.length + ' 个文件', 'info');
+                                _dispatchSelection(_pendingInput, _pendingKind);
+                            }
+                        } catch (_) {}
+                    }
+                }, 200);
+            }
+        });
 
         // ========== 加载相册列表 ==========
         function loadAlbums() {
@@ -147,52 +269,141 @@
         }
 
         // ========== 文件选择 ==========
-        dropzone.addEventListener('click', function () {
+        // 不再 cloneNode 重建 input，直接重置 value 复用同一元素
+        // 鸿蒙 4.2 上 cloneNode 后的新 input 在多文件选择时 change 事件可能不触发
+        function resetInput(inputEl) {
+            try { inputEl.value = ''; } catch (_) {}
+            return inputEl;
+        }
+
+        function openPicker(inputEl, kind) {
+            if (!inputEl) return;
+            // 设置 pending 状态，供 visibilitychange 兜底使用
+            _pendingInput = inputEl;
+            _pendingKind = kind;
+            _pendingProcessed = false;
+            resetInput(inputEl);
+            if (DEBUG_TOAST) toast('打开选择器...', 'info');
+            setTimeout(function () { try { inputEl.click(); } catch (_) {} }, 0);
+        }
+
+        dropzoneFile.addEventListener('click', function () {
             if (isUploading) return;
-            fileInput.click();
-        });
-        fileInput.addEventListener('change', function () {
-            addFiles(fileInput.files);
-            fileInput.value = '';
+            var now = Date.now();
+            if (now - _lastFileClickMs < 350) return;
+            _lastFileClickMs = now;
+            openPicker(fileInput, 'any');
         });
 
-        function addFiles(files) {
-            if (!files) return;
-            for (var i = 0; i < files.length; i++) {
-                selectedFiles.push(files[i]);
+        function addFiles(files, expectedKind) {
+            if (!files || files.length === 0) {
+                toast('未检测到选择的文件', 'warn');
+                return;
             }
-            renderFileList();
+            var pushed = 0;
+            var skipped = 0;
+            var dup = 0;
+            for (var i = 0; i < files.length; i++) {
+                var f = files[i];
+                if (!f) continue;
+                // 鸿蒙部分文件对象可能 name 缺失，先做兜底再走去重逻辑
+                if (!f.name) try { f.name = '未命名_' + (selectedFiles.length + pushed); } catch (_) {}
+                // 类型白名单过滤
+                if (!isAllowedType(f)) {
+                    skipped++;
+                    continue;
+                }
+                // 去重：name+size+lastModified 完全一致才算重复（缺失字段时 getFileKey 返回空串，跳过去重）
+                var k = getFileKey(f);
+                if (k && _selectedKeys[k]) { dup++; continue; }
+                if (k) _selectedKeys[k] = true;
+                selectedFiles.push(f);
+                pushed++;
+            }
+            if (pushed === 0) {
+                var msg = '未检测到有效的文件';
+                if (dup > 0 && skipped === 0) msg = '这些文件已经选过了（共 ' + dup + ' 个重复）';
+                else if (skipped > 0) msg = '跳过了 ' + skipped + ' 个不支持的文件类型，仅支持图片和视频';
+                else if (dup > 0) msg += '（跳过重复 ' + dup + ' 个）';
+                toast(msg, 'warn');
+                return;
+            }
+            var tip = '已选 ' + selectedFiles.length + ' 个';
+            var extras = [];
+            if (dup > 0) extras.push('重复 ' + dup + ' 个');
+            if (skipped > 0) extras.push('跳过不支持 ' + skipped + ' 个');
+            if (extras.length > 0) tip += '（' + extras.join('，') + '）';
+            if (ENABLE_SELECT_TOAST) toast(tip, (skipped > 0 || dup > 0) ? 'warn' : 'info');
+            try {
+                renderFileList();
+            } catch (e) {
+                toast('渲染列表出错: ' + (e.message || ''), 'error');
+            }
             updateSubmitBtn();
         }
 
         function renderFileList() {
             if (selectedFiles.length === 0) {
                 fileListEl.innerHTML = '';
+                // 强制 reflow
+                try { void fileListEl.offsetHeight; } catch (_) {}
                 return;
             }
-            var itemsHtml = selectedFiles.map(function (f, idx) {
-                var size = formatSize(f.size);
-                var isVideo = f.type && f.type.startsWith('video');
-                return '<div class="m-file-item">' +
-                    '<div class="m-fi-icon">' + (isVideo ? '🎬' : '🖼️') + '</div>' +
-                    '<div class="m-fi-body">' +
-                        '<div class="m-fi-name">' + escapeHtml(f.name) + '</div>' +
-                        '<div class="m-fi-meta">' + size + (f.type ? ' · ' + f.type : '') + '</div>' +
-                    '</div>' +
-                    '<button type="button" class="m-fi-del" data-idx="' + idx + '">×</button>' +
-                '</div>';
-            }).join('');
-            fileListEl.innerHTML = '<div class="m-fi-header">已选 ' + selectedFiles.length + ' 个文件</div>' + itemsHtml;
+            var itemsHtml = '';
+            try {
+                itemsHtml = selectedFiles.map(function (f, idx) {
+                    var size = formatSize(f && f.size);
+                    var isVideo = f && f.type && String(f.type).startsWith('video');
+                    var name = f ? (f.name || ('未命名_' + idx)) : ('未知_' + idx);
+                    var metaStr = size;
+                    if (f && f.type) metaStr += ' · ' + String(f.type);
+                    return '<div class="m-file-item">' +
+                        '<div class="m-fi-icon">' + (isVideo ? '🎬' : '🖼️') + '</div>' +
+                        '<div class="m-fi-body">' +
+                            '<div class="m-fi-name">' + escapeHtml(name) + '</div>' +
+                            '<div class="m-fi-meta">' + escapeHtml(metaStr) + '</div>' +
+                        '</div>' +
+                        '<button type="button" class="m-fi-del" data-idx="' + idx + '">×</button>' +
+                    '</div>';
+                }).join('');
+                fileListEl.innerHTML = '<div class="m-fi-header">已选 ' + selectedFiles.length + ' 个文件</div>' + itemsHtml;
+            } catch (e) {
+                // 兜底：innerHTML 渲染异常时降级为纯文本列表
+                var plain = '<div class="m-fi-header">已选 ' + selectedFiles.length + ' 个文件</div>';
+                for (var j = 0; j < selectedFiles.length; j++) {
+                    plain += '<div style="padding:6px 0;border-bottom:1px dashed #eee;font-size:14px;">' +
+                        escapeHtml(selectedFiles[j] && selectedFiles[j].name ? selectedFiles[j].name : ('文件_' + j)) +
+                        ' <button type="button" class="m-fi-del" data-idx="' + j + '" style="float:right;color:#f56565;border:none;background:none;font-size:20px;cursor:pointer;">×</button></div>';
+                }
+                fileListEl.innerHTML = plain;
+                toast('已降级显示文件列表', 'warn');
+            }
 
             fileListEl.querySelectorAll('.m-fi-del').forEach(function (b) {
                 b.addEventListener('click', function () {
                     if (isUploading) return;
                     var i = parseInt(b.getAttribute('data-idx'), 10);
-                    selectedFiles.splice(i, 1);
+                    if (i >= 0 && i < selectedFiles.length) {
+                        var k = getFileKey(selectedFiles[i]);
+                        if (k) delete _selectedKeys[k];
+                        selectedFiles.splice(i, 1);
+                    }
                     renderFileList();
                     updateSubmitBtn();
                 });
             });
+
+            // 鸿蒙 WebView 渲染节流兜底：强制触发一次 reflow + 重新 attach
+            try {
+                void fileListEl.offsetHeight;
+                var parent = fileListEl.parentNode;
+                if (parent) {
+                    var next = fileListEl.nextSibling;
+                    parent.removeChild(fileListEl);
+                    parent.insertBefore(fileListEl, next);
+                    void fileListEl.offsetHeight;
+                }
+            } catch (_) {}
         }
 
         function formatSize(n) {
@@ -278,6 +489,7 @@
 
             // 成功后清空已选文件
             selectedFiles = [];
+            _selectedKeys = {};
             renderFileList();
             updateSubmitBtn();
         }

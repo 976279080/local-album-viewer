@@ -174,6 +174,20 @@ html, body {
     display: flex; align-items: center; justify-content: center;
     box-shadow: 0 6px 18px rgba(102, 126, 234, 0.35);
 }
+
+/* 关键：鸿蒙 4.2 WebView 中 display:none 的 input，onchange 事件偶发不触发；
+   改用视觉隐藏方式：保留在 DOM 中但尺寸为 0、完全透明、脱离正常流，保持事件链完整 */
+.m-input-hidden {
+    position: absolute;
+    left: -9999px;
+    top: 0;
+    width: 0;
+    height: 0;
+    opacity: 0;
+    pointer-events: none;
+    visibility: hidden;
+    overflow: hidden;
+}
 .m-dz-text {
     font-size: 16px;
     font-weight: 600;
@@ -347,6 +361,79 @@ html, body {
 }
 
 /* ========== Footer ========== */
+
+/* ========== 微信环境遮罩引导 ========== */
+.m-wx-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.88);
+    z-index: 9999;
+    pointer-events: auto;
+    -webkit-backdrop-filter: blur(2px);
+    backdrop-filter: blur(2px);
+    animation: mWxFadeIn 0.28s ease;
+}
+@keyframes mWxFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* 文字框：居上居右，白色实体矩形圆角聚光灯效果 */
+.m-wx-textbox {
+    position: absolute;
+    top: calc(env(safe-area-inset-top, 0) + 140px);
+    right: 16px;
+    background: #ffffff;
+    color: #1e293b;
+    padding: 16px 22px 18px;
+    border-radius: 14px;
+    box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.28),
+        0 0 40px rgba(255, 255, 255, 0.35),
+        0 0 80px rgba(255, 255, 255, 0.15);
+    min-width: 200px;
+    max-width: 260px;
+    animation: mWxTextBoxIn 0.35s cubic-bezier(0.22, 1, 0.36, 1) 0.12s both;
+}
+@keyframes mWxTextBoxIn {
+    from { opacity: 0; transform: translateY(6px) scale(0.96); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.m-wx-line {
+    font-size: 16px;
+    line-height: 1.8;
+    color: #1e293b;
+    text-align: right;
+    white-space: nowrap;
+}
+.m-wx-line + .m-wx-line {
+    margin-top: 4px;
+}
+.m-wx-line b {
+    font-weight: 700;
+    color: #0f172a;
+    background: linear-gradient(90deg, #eef2ff 0%, #f5f3ff 100%);
+    padding: 2px 6px;
+    border-radius: 5px;
+    margin: 0 1px;
+}
+
+/* 垂直直线箭头：起点=文字框右上角，终点=微信「···」下方 */
+.m-wx-arrow {
+    position: absolute;
+    top: calc(env(safe-area-inset-top, 0) + 50px);
+    right: 6px;
+    width: 20px;
+    height: 90px;
+    pointer-events: none;
+    filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.4));
+    animation: mWxArrowIn 0.5s ease-out 0.25s both;
+}
+@keyframes mWxArrowIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
 .m-foot {
     margin-top: 24px;
     text-align: center;
