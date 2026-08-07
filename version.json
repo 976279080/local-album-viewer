@@ -1,6 +1,12 @@
 {
-  "latest_version": "0.0.4",
+  "latest_version": "0.0.5",
   "versions": [
+    {
+      "version": "0.0.5",
+      "date": "2026-08-07",
+      "changelog": "### 新增\n- 添加手机浏览照片功能\n- 部分鸿蒙机型微信浏览器无法批量上传，强制引导系统浏览器上传",
+      "download_url": "https://gitee.com/cdgm/local-album-viewer/raw/main/.release/.bin.zip"
+    },
     {
       "version": "0.0.4",
       "date": "2026-07-31",
