@@ -296,7 +296,21 @@
 
         function navPhoto(dir) {
             saveCurrentVideoProgress();
-            const ni = detailState.currentPhotoIndex + dir;
+            var curIdx = detailState.currentPhotoIndex;
+            if (curIdx >= visiblePhotos.value.length) curIdx = visiblePhotos.value.length - 1;
+            // 检查当前照片是否仍在 curIdx 位置
+            var photoAtCurIdx = visiblePhotos.value[curIdx];
+            var currentStillAtIdx = photoAtCurIdx
+                && detailState.detailPhoto
+                && photoAtCurIdx.path_key === detailState.detailPhoto.path_key;
+            var ni;
+            if (dir > 0 && !currentStillAtIdx) {
+                // 当前照片已移走（如评分改为"无感"后移到折叠区或从列表移除），
+                // 下一张照片已移到 curIdx 位置，直接用 curIdx
+                ni = curIdx;
+            } else {
+                ni = curIdx + dir;
+            }
             if (ni < 0) {
                 showToast('已经是第一张了', 'warning');
                 return;

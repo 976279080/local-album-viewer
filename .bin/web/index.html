@@ -160,12 +160,21 @@
                             {{ ui.batchMode ? '✕ 取消选择' : ' 批量选择' }}
                         </button>
 
-                        <button 
+                        <button
                             class="btn-edit-mode"
                             :class="{ active: editMode }"
                             @click="toggleEditMode"
                         >
                             {{ editMode ? '编辑中' : '编辑模式' }}
+                        </button>
+
+                        <button
+                            v-if="!ui.batchMode"
+                            class="btn-edit-mode"
+                            @click="openMobileView"
+                            title="手机扫码浏览"
+                        >
+                            手机浏览
                         </button>
                     </div>
                 </div>
@@ -653,6 +662,31 @@
                         />
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <div
+            v-if="ui.showMobileViewModal"
+            class="mobile-view-modal"
+            @click.self="closeMobileView"
+        >
+            <div class="mobile-view-modal-content">
+                <button class="mobile-view-close" @click="closeMobileView">×</button>
+                <h3>手机浏览</h3>
+                <p class="mobile-view-tip">用手机扫描二维码，在浏览器中打开</p>
+                <div class="mobile-view-qr-wrap">
+                    <div v-if="ui.mobileViewQrLoading" class="mobile-view-qr-loading">
+                        <div class="mobile-view-spinner"></div>
+                        <span>生成二维码中...</span>
+                    </div>
+                    <img v-else-if="ui.mobileViewQrUrl" :src="ui.mobileViewQrUrl" alt="二维码" class="mobile-view-qr-img">
+                    <div v-else class="mobile-view-qr-error">二维码生成失败<br>请复制下方链接在手机浏览器打开</div>
+                </div>
+                <div class="mobile-view-url-row" v-if="ui.mobileViewUrl">
+                    <span class="mobile-view-url">{{ ui.mobileViewUrl }}</span>
+                    <button class="mobile-view-copy-btn" @click="copyMobileViewUrl">复制</button>
+                </div>
+                <p class="mobile-view-album-tip" v-if="ui.mobileViewAlbumName">当前相册：{{ ui.mobileViewAlbumName }}</p>
             </div>
         </div>
 

@@ -188,7 +188,9 @@ class PhotoQueryService:
             'tags': tag_names,
             'file_type': photo.get('file_type', 'image'),
             'create_time': photo.get('create_time'),
-            'update_time': photo.get('update_time')
+            'update_time': photo.get('update_time'),
+            'width': photo.get('width'),
+            'height': photo.get('height')
         }
 
         # 详情页完整字段

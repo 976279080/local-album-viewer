@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>浏览 - 无联网相册</title>
+    <link rel="stylesheet" href="mobile-view.css?v=1">
+</head>
+<body>
+    <div class="mv-app">
+        <!-- 主体展示区 -->
+        <main class="mv-stage" id="mvStage">
+            <div class="mv-slide" id="mvSlide">
+                <div class="mv-loading">
+                    <div class="mv-loading-spinner"></div>
+                    加载中...
+                </div>
+            </div>
+        </main>
+
+        <!-- 右侧悬浮操作栏（纯摆设，模拟模式下显示） -->
+        <aside class="mv-actions" id="mvActions" style="display:none;">
+            <div class="mv-action-btn">
+                <span class="mv-icon">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path fill="#ffffff" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                    </svg>
+                </span>
+                <span class="mv-action-count" id="mvLikeCount">0</span>
+            </div>
+            <div class="mv-action-btn">
+                <span class="mv-icon">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path fill="#ffffff" d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                    </svg>
+                </span>
+                <span class="mv-action-count" id="mvCommentCount">0</span>
+            </div>
+        </aside>
+
+        <!-- 底部信息条 -->
+        <footer class="mv-footer">
+            <div class="mv-title" id="mvTitle"></div>
+            <button class="mv-full-link" id="mvFullLink">
+                观看完整片段·全 <span id="mvTotalCount">0</span> 张
+            </button>
+        </footer>
+
+        <!-- 选集面板 -->
+        <div class="mv-drawer-mask" id="mvEpMask" style="display:none;"></div>
+        <div class="mv-episode-panel" id="mvEpisodePanel">
+            <div class="mv-drawer-header">
+                <span>选集</span>
+                <div class="mv-sim-toggle">
+                    <span class="mv-sim-label">模拟模式</span>
+                    <label class="mv-switch">
+                        <input type="checkbox" id="mvSimMode">
+                        <span class="mv-switch-slider"></span>
+                    </label>
+                </div>
+                <button class="mv-drawer-close" id="mvEpClose">×</button>
+            </div>
+            <div class="mv-ep-filters">
+                <select id="mvEpAlbum" class="mv-ep-select"></select>
+                <select id="mvEpType" class="mv-ep-select">
+                    <option value="all">全部类型</option>
+                    <option value="image">仅照片</option>
+                    <option value="video">仅视频</option>
+                </select>
+                <select id="mvEpRating" class="mv-ep-select">
+                    <option value="all">全部评分</option>
+                    <option value="positive">喜欢</option>
+                    <option value="neutral">未评</option>
+                    <option value="negative">不喜欢</option>
+                </select>
+            </div>
+            <div class="mv-ep-grid" id="mvEpGrid"></div>
+        </div>
+    </div>
+
+    <script>
+    (function () {
+        'use strict';
+
+        // ===== 状态 =====
+        var state = {
+            albumId: '',
+            albumName: '',
+            photos: [],
+            filteredPhotos: [],
+            currentIndex: 0,
+            currentPhoto: null,
+            allAlbums: [],
+            filters: { type: 'all', rating: 'all' },
+            isEpOpen: false,
+            simMode: false,
+            userUnlocked: false, // 用户首次取消静音后置 true，后续视频默认有声
+            isLoading: false,
+            touchStartX: 0,
+            touchStartY: 0,
+            touchStartTime: 0,
+            zoomed: false,
+            videoProgress: loadProgress()
+        };
+
+        // ===== DOM 引用 =====
+        var dom = {
+            albumName: document.getElementById('mvAlbumName'),
+            stage: document.getElementById('mvStage'),
+            slide: document.getElementById('mvSlide'),
+            title: document.getElementById('mvTitle'),
+            totalCount: document.getElementById('mvTotalCount'),
+            fullLink: document.getElementById('mvFullLink'),
+            epMask: document.getElementById('mvEpMask'),
+            episodePanel: document.getElementById('mvEpisodePanel'),
+            epClose: document.getElementById('mvEpClose'),
+            epAlbum: document.getElementById('mvEpAlbum'),
+            epType: document.getElementById('mvEpType'),
+            epRating: document.getElementById('mvEpRating'),
+            epGrid: document.getElementById('mvEpGrid'),
+            simMode: document.getElementById('mvSimMode'),
+            actions: document.getElementById('mvActions'),
+            likeCount: document.getElementById('mvLikeCount'),
+            commentCount: document.getElementById('mvCommentCount')
+        };
+
+        // ===== 工具函数 =====
+        function getQuery(k) {
+            var s = location.search.substring(1);
+            var arr = s.split('&');
+            for (var i = 0; i < arr.length; i++) {
+                var p = arr[i].split('=');
+                if (decodeURIComponent(p[0]) === k) return decodeURIComponent(p[1] || '');
+            }
+            return '';
+        }
+
+        function escapeHtml(s) {
+            return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+                return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
+            });
+        }
+
+        function toast(msg) {
+            var el = document.createElement('div');
+            el.className = 'mv-toast';
+            el.textContent = msg;
+            document.body.appendChild(el);
+            setTimeout(function () { el.classList.add('show'); }, 10);
+            setTimeout(function () {
+                el.classList.remove('show');
+                setTimeout(function () { el.remove(); }, 300);
+            }, 1800);
+        }
+
+        // 视频进度记忆
+        function loadProgress() {
+            try {
+                return JSON.parse(localStorage.getItem('mv_video_progress') || '{}');
+            } catch (_) { return {}; }
+        }
+        function saveProgressMap(map) {
+            try { localStorage.setItem('mv_video_progress', JSON.stringify(map)); } catch (_) {}
+        }
+
+        // ===== API =====
+        // 使用 home-init 一次拿到 summary + album_years + photos
+        function fetchHomeInit(albumId) {
+            var url = '/api/home-init';
+            if (albumId) url += '?album=' + encodeURIComponent(albumId);
+            return fetch(url).then(function (r) { return r.json(); });
+        }
+        function fetchSummary() {
+            return fetch('/api/summary').then(function (r) { return r.json(); });
+        }
+
+        // 从 summary.members 构造相册列表（保留 id）
+        function buildAlbumList(members) {
+            if (!members) return [];
+            return Object.keys(members).map(function (k) {
+                return { id: k, name: members[k].name || ('相册' + k), color: members[k].color || '' };
+            });
+        }
+
+        // ===== 初始化 =====
+        function init() {
+            state.albumId = getQuery('album') || '';
+            loadAlbum(state.albumId);
+        }
+
+        // ===== 加载相册 =====
+        function loadAlbum(albumId, retry) {
+            state.isLoading = true;
+            dom.slide.innerHTML = '<div class="mv-loading"><div class="mv-loading-spinner"></div>加载中...</div>';
+            fetchHomeInit(albumId).then(function (d) {
+                if (!d) throw new Error('empty response');
+                // 相册列表
+                if (d.summary && d.summary.members) {
+                    state.allAlbums = buildAlbumList(d.summary.members);
+                }
+                // 当前相册名
+                state.albumName = (d.album_years && d.album_years.album_name) ? d.album_years.album_name : '';
+                // 当前相册 id（若入参为空，取接口返回的第一个）
+                if (d.album_years && d.album_years.album_id) {
+                    state.albumId = String(d.album_years.album_id);
+                } else if (state.allAlbums.length > 0) {
+                    state.albumId = String(state.allAlbums[0].id);
+                }
+                // 照片数组：home-init 返回的 photos 是字典，真正的数组在 photos.photos
+                var p = d.photos;
+                if (p && Array.isArray(p.photos)) {
+                    state.photos = p.photos;
+                } else if (Array.isArray(p)) {
+                    state.photos = p;
+                } else {
+                    state.photos = [];
+                }
+                applyFilters();
+                state.currentIndex = 0;
+                state.isLoading = false;
+                renderCurrent();
+                updateHeader();
+            }).catch(function (e) {
+                console.error('[mobile-view] loadAlbum failed:', e);
+                // 自动重试一次
+                if (!retry) {
+                    setTimeout(function () { loadAlbum(albumId, true); }, 800);
+                    return;
+                }
+                dom.slide.innerHTML = '<div class="mv-empty">加载失败，请检查网络</div>';
+                state.isLoading = false;
+            });
+        }
+
+        // ===== 筛选（含横图跳过逻辑） =====
+        function applyFilters() {
+            var f = state.filters;
+            state.filteredPhotos = state.photos.filter(function (p) {
+                // 横图直接跳过（仅图片判断，视频不跳）
+                if (p.file_type === 'image' && p.width && p.height && p.width > p.height) return false;
+                // 类型筛选
+                if (f.type !== 'all' && p.file_type !== f.type) return false;
+                // 评分筛选
+                if (f.rating === 'positive' && !(p.rating > 0)) return false;
+                if (f.rating === 'negative' && !(p.rating < 0)) return false;
+                if (f.rating === 'neutral' && p.rating !== 0) return false;
+                return true;
+            });
+            dom.totalCount.textContent = state.filteredPhotos.length;
+        }
+
+        // ===== 渲染当前张 =====
+        function renderCurrent() {
+            if (state.filteredPhotos.length === 0) {
+                dom.slide.innerHTML = '<div class="mv-empty">无照片</div>';
+                dom.title.textContent = '';
+                return;
+            }
+            if (state.currentIndex >= state.filteredPhotos.length) state.currentIndex = state.filteredPhotos.length - 1;
+            if (state.currentIndex < 0) state.currentIndex = 0;
+
+            var p = state.filteredPhotos[state.currentIndex];
+            state.currentPhoto = p;
+            dom.title.textContent = p.title || '';
+            state.zoomed = false;
+
+            if (p.file_type === 'video') {
+                renderVideo(p);
+            } else {
+                renderImage(p);
+            }
+            preloadNeighbors();
+            // 模拟模式：切换照片时刷新数字
+            if (state.simMode) updateSimCounts();
+        }
+
+        function renderImage(p) {
+            // 销毁旧媒体（防止残留播放）
+            cleanupMedia();
+            var isPortrait = p.width && p.height && (p.height > p.width);
+            var cls = isPortrait ? 'portrait' : '';
+            dom.slide.innerHTML = '<img class="' + cls + '" src="' + p.original_url + '" alt="">';
+            var img = dom.slide.querySelector('img');
+            attachImageEvents(img);
+        }
+
+        function renderVideo(p) {
+            // 彻底清理旧媒体（防止声音残留和 DOM 堆积）
+            cleanupMedia();
+            var isPortrait = p.width && p.height && (p.height > p.width);
+            var cls = isPortrait ? 'portrait' : '';
+            // poster 属性：切换时立即显示缩略图，避免视频加载前的黑屏
+            // 预览图来自后端生成的 preview_url，已缓存可用
+            var poster = p.preview_url || '';
+            var html = '<video class="' + cls + '" src="' + p.original_url + '"' +
+                (poster ? ' poster="' + poster + '"' : '') +
+                ' playsinline webkit-playsinline autoplay muted preload="metadata" x5-playsinline x5-video-player-type="h5-page"' +
+                ' disablepictureinpicture controlslist="nodownload nofullscreen noremoteplayback noplaybackrate"' +
+                ' disableremoteplayback></video>';
+            dom.slide.innerHTML = html;
+            var v = dom.slide.querySelector('video');
+            state.currentVideo = v;
+            attachVideoEvents(v, p);
+            // 显式触发加载
+            try { v.load(); } catch (_) {}
+        }
+
+        // 销毁当前媒体（renderVideo 和 renderImage 切换前都调用）
+        function cleanupMedia() {
+            try {
+                // 先调用 dispose（清理 timer + 标记 removed，防止异步回调操作已销毁节点）
+                if (state._currentDispose) {
+                    try { state._currentDispose(); } catch (_) {}
+                    state._currentDispose = null;
+                }
+                if (state.currentVideo) {
+                    var oldV = state.currentVideo;
+                    oldV.pause();
+                    oldV.src = '';
+                    oldV.removeAttribute('src');
+                    try { oldV.load(); } catch (_) {}
+                    if (oldV.parentNode) {
+                        oldV.parentNode.removeChild(oldV);
+                    }
+                }
+            } catch (_) {}
+            state.currentVideo = null;
+            // 清理所有提示和覆盖层
+            var tips = dom.stage.querySelectorAll('.mv-unmute-tip, .mv-tap-play');
+            for (var i = 0; i < tips.length; i++) tips[i].remove();
+            // 兜底：清理 slide 内所有残留的 video 元素（防止 DOM 堆积）
+            var allVideos = dom.slide.querySelectorAll('video');
+            for (var j = 0; j < allVideos.length; j++) {
+                try { allVideos[j].pause(); } catch (_) {}
+                try { allVideos[j].parentNode.removeChild(allVideos[j]); } catch (_) {}
+            }
+        }
+
+        // ===== 视频事件（自动播放 + 进度记忆 + 尽量有声） =====
+        function attachVideoEvents(v, photo) {
+            var unmuteTip = null;
+            var tapPlayOverlay = null;
+            var removed = false;
+            var errorCount = 0;
+
+            // 移除已有的取消静音提示
+            function clearTip() {
+                if (unmuteTip) {
+                    try { unmuteTip.remove(); } catch (_) {}
+                    unmuteTip = null;
+                }
+                var existTips = dom.stage.querySelectorAll('.mv-unmute-tip');
+                for (var i = 0; i < existTips.length; i++) {
+                    try { existTips[i].remove(); } catch (_) {}
+                }
+            }
+
+            function clearTapPlay() {
+                if (tapPlayOverlay) {
+                    try { tapPlayOverlay.remove(); } catch (_) {}
+                    tapPlayOverlay = null;
+                }
+                var exist = dom.stage.querySelectorAll('.mv-tap-play');
+                for (var i = 0; i < exist.length; i++) {
+                    try { exist[i].remove(); } catch (_) {}
+                }
+            }
+
+            // 微信浏览器自动播放支持：通过 getNetworkType 回调获取播放权限
+            function weixinPlay(cb) {
+                if (typeof WeixinJSBridge !== 'undefined') {
+                    try {
+                        WeixinJSBridge.invoke('getNetworkType', {}, function () {
+                            try { cb(); } catch (_) {}
+                        });
+                        return;
+                    } catch (_) {}
+                }
+                try { cb(); } catch (_) {}
+            }
+
+            // 尝试播放：未解锁时直接静音播放（移动端最可靠），已解锁时尝试有声
+            function tryPlay() {
+                if (removed) return;
+                if (state.userUnlocked) {
+                    // 已解锁：尝试有声播放
+                    function playUnmuted() {
+                        try {
+                            v.muted = false;
+                            var p2 = v.play();
+                            if (p2 && p2.catch) p2.catch(function () {
+                                if (removed) return;
+                                // 有声失败，降级静音播放
+                                try {
+                                    v.muted = true;
+                                    var p3 = v.play();
+                                    if (p3 && p3.catch) p3.catch(function () {
+                                        if (removed) return;
+                                        // 静音也失败，重新加载后重试
+                                        scheduleRetry();
+                                    });
+                                } catch (_) {}
+                            });
+                        } catch (_) {}
+                    }
+                    weixinPlay(playUnmuted);
+                    return;
+                }
+                // 未解锁：直接静音播放（不先试有声，避免黑屏等待）
+                v.muted = true;
+                function playMuted() {
+                    try {
+                        var p = v.play();
+                        if (p && p.catch) {
+                            p.catch(function () {
+                                if (removed) return;
+                                scheduleRetry();
+                            });
+                        }
+                    } catch (_) {}
+                }
+                weixinPlay(playMuted);
+                // 首次显示取消静音提示
+                if (!unmuteTip) showUnmuteTip();
+            }
+
+            // 失败后调度重试：根据 readyState 决定是否重新 load
+            var retryCount = 0;
+            function scheduleRetry() {
+                if (removed) return;
+                if (retryCount >= 8) return; // 最多重试 8 次（覆盖约 5 秒）
+                retryCount++;
+                // readyState < 2：视频还没加载到可播放状态，先重新 load
+                if (v.readyState < 2) {
+                    try {
+                        v.load(); // 强制重新加载
+                    } catch (_) {}
+                }
+                // 递增间隔：400, 700, 1000, 1500, 2000, 2500, 3000, 3500 ms
+                var delays = [400, 700, 1000, 1500, 2000, 2500, 3000, 3500];
+                setTimeout(function () {
+                    if (removed) return;
+                    if (v.paused) tryPlay();
+                }, delays[retryCount - 1] || 3500);
+            }
+
+            function showUnmuteTip() {
+                clearTip();
+                if (removed) return;
+                unmuteTip = document.createElement('div');
+                unmuteTip.className = 'mv-unmute-tip';
+                unmuteTip.textContent = '点击取消静音';
+                var clicked = false;
+                function doUnmute(ev) {
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    if (clicked) return;
+                    clicked = true;
+                    state.userUnlocked = true;
+                    clearTip();
+                    if (removed) return;
+                    try {
+                        v.muted = false;
+                        v.play().then(clearTip).catch(function () {
+                            try {
+                                v.muted = true;
+                                v.play().catch(function () {});
+                            } catch (_) {}
+                        });
+                    } catch (_) {}
+                }
+                unmuteTip.addEventListener('touchend', doUnmute, { passive: false, once: true });
+                unmuteTip.addEventListener('click', doUnmute, { once: true });
+                dom.stage.appendChild(unmuteTip);
+            }
+
+            // 自动播放全部失败后，显示"点击播放"覆盖层
+            function showTapPlay() {
+                clearTapPlay();
+                if (removed) return;
+                tapPlayOverlay = document.createElement('div');
+                tapPlayOverlay.className = 'mv-tap-play';
+                tapPlayOverlay.innerHTML = '<svg viewBox="0 0 24 24" width="48" height="48"><path fill="#fff" d="M8 5v14l11-7z"/></svg><span>点击播放</span>';
+                function doPlay(ev) {
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    state.userUnlocked = true;
+                    clearTapPlay();
+                    if (removed) return;
+                    try {
+                        v.muted = false;
+                        v.play().then(clearTip).catch(function () {
+                            try {
+                                v.muted = true;
+                                v.play().catch(function () {});
+                            } catch (_) {}
+                        });
+                    } catch (_) {}
+                }
+                tapPlayOverlay.addEventListener('touchend', doPlay, { passive: false, once: true });
+                tapPlayOverlay.addEventListener('click', doPlay, { once: true });
+                dom.stage.appendChild(tapPlayOverlay);
+            }
+
+            // 立即尝试播放（不等任何事件，最快路径）
+            tryPlay();
+
+            // 元数据完成：恢复进度 + 尝试播放
+            v.addEventListener('loadedmetadata', function () {
+                if (removed) return;
+                var saved = state.videoProgress[photo.id];
+                if (saved && saved > 2 && v.duration && saved < (v.duration - 2)) {
+                    try { v.currentTime = saved; } catch (_) {}
+                }
+                tryPlay();
+            });
+
+            // loadeddata 兜底：第一帧可用时尝试播放
+            v.addEventListener('loadeddata', function () {
+                if (removed) return;
+                if (v.paused) tryPlay();
+            });
+
+            // canplay 兜底：数据缓冲足够开始播放时尝试（不等整个视频下载完）
+            v.addEventListener('canplay', function () {
+                if (removed) return;
+                if (v.paused) tryPlay();
+            });
+
+            // canplaythrough：缓冲足够连续播放时确保播放
+            v.addEventListener('canplaythrough', function () {
+                if (removed) return;
+                if (v.paused) tryPlay();
+            });
+
+            // waiting→playing：网络卡顿恢复后继续播放
+            v.addEventListener('waiting', function () {
+                if (removed) return;
+            });
+            v.addEventListener('playing', function () {
+                if (removed) return;
+                clearTip();
+                clearTapPlay();
+            });
+
+            // 多重兜底计时器：mobile 上 loadedmetadata/canplay 可能不触发
+            // 加密重试间隔，确保各种网络条件下都能触发播放
+            var timers = [
+                setTimeout(function () {
+                    if (removed) return;
+                    if (v.paused || v.readyState < 2) tryPlay();
+                }, 100),
+                setTimeout(function () {
+                    if (removed) return;
+                    if (v.paused) tryPlay();
+                }, 300),
+                setTimeout(function () {
+                    if (removed) return;
+                    if (v.paused) tryPlay();
+                }, 600),
+                setTimeout(function () {
+                    if (removed) return;
+                    if (v.paused) tryPlay();
+                }, 1000),
+                setTimeout(function () {
+                    if (removed) return;
+                    if (v.paused) tryPlay();
+                }, 1500),
+                // 最终兜底：3s 后仍未播放，显示点击播放覆盖层
+                setTimeout(function () {
+                    if (removed) return;
+                    if (v.paused) showTapPlay();
+                }, 3000)
+            ];
+
+            // 进度记忆
+            var saveTimer = null;
+            v.addEventListener('timeupdate', function () {
+                if (!v.paused && !v.ended) {
+                    state.videoProgress[photo.id] = v.currentTime;
+                    if (!saveTimer) {
+                        saveTimer = setTimeout(function () {
+                            saveProgressMap(state.videoProgress);
+                            saveTimer = null;
+                        }, 2000);
+                    }
+                }
+            });
+
+            // 视频结束自动切下一张
+            v.addEventListener('ended', function () {
+                next();
+            });
+
+            // 点击/触碰切换播放暂停：统一由 stage 处理，避免事件冲突
+            // （video 上的 touchend/click 已移除，防止 stopPropagation 阻止 stage 响应）
+
+            // 暂停保存进度
+            v.addEventListener('pause', function () {
+                saveProgressMap(state.videoProgress);
+            });
+
+            // 错误兜底：尝试重新加载源（最多2次）
+            v.addEventListener('error', function () {
+                if (removed) return;
+                errorCount++;
+                if (errorCount <= 2) {
+                    setTimeout(function () {
+                        if (removed) return;
+                        // 重新设置 src 并触发加载
+                        try {
+                            v.src = photo.original_url;
+                            v.load();
+                        } catch (_) {}
+                        tryPlay();
+                    }, 500);
+                } else {
+                    // 多次失败，显示点击播放覆盖层
+                    showTapPlay();
+                }
+            });
+
+            // 在卸载时标记，避免被异步回调操作已销毁的节点
+            v._mvDispose = function () {
+                removed = true;
+                timers.forEach(function (t) { clearTimeout(t); });
+                if (saveTimer) clearTimeout(saveTimer);
+                clearTip();
+                clearTapPlay();
+            };
+            state._currentDispose = v._mvDispose;
+        }
+
+        // ===== 图片事件（双击放大） =====
+        function attachImageEvents(img) {
+            var lastTap = 0;
+            img.addEventListener('touchend', function (e) {
+                var now = Date.now();
+                if (now - lastTap < 300) {
+                    e.preventDefault();
+                    toggleZoom(img);
+                }
+                lastTap = now;
+            });
+        }
+
+        function toggleZoom(img) {
+            if (state.zoomed) {
+                img.style.transform = '';
+                img.style.transition = 'transform 0.25s ease';
+                img.style.zIndex = '';
+                state.zoomed = false;
+            } else {
+                img.style.transition = 'transform 0.25s ease';
+                img.style.transform = 'scale(2)';
+                img.style.zIndex = '5';
+                state.zoomed = true;
+            }
+        }
+
+        // ===== 上下滑切换 =====
+        dom.stage.addEventListener('touchstart', function (e) {
+            state.touchStartY = e.touches[0].clientY;
+            state.touchStartX = e.touches[0].clientX;
+            state.touchStartTime = Date.now();
+            state.touchMoveTriggered = false;
+        }, { passive: false });
+
+        // touchmove 阻止默认行为，防止浏览器下拉刷新抢占上下滑手势
+        dom.stage.addEventListener('touchmove', function (e) {
+            // 放大状态不阻止（允许双指缩放/拖动）
+            if (state.zoomed) return;
+            e.preventDefault();
+        }, { passive: false });
+
+        // 统一的点击切换播放/暂停逻辑
+        function toggleVideoPlay() {
+            var cv = state.currentVideo;
+            if (!cv) return;
+            state.userUnlocked = true;
+            try {
+                if (cv.paused) {
+                    cv.muted = false;
+                    var pp = cv.play();
+                    if (pp && pp.catch) {
+                        pp.catch(function () {
+                            cv.muted = true;
+                            cv.play().catch(function () {});
+                        });
+                    }
+                } else {
+                    cv.pause();
+                }
+            } catch (_) {}
+        }
+
+        dom.stage.addEventListener('touchend', function (e) {
+            // 放大状态下不响应滑动
+            if (state.zoomed) return;
+            var dy = e.changedTouches[0].clientY - state.touchStartY;
+            var dx = e.changedTouches[0].clientX - state.touchStartX;
+            var dt = Date.now() - state.touchStartTime;
+            // 上下滑切换（垂直位移 > 水平位移，且超过 40px）
+            // dy<0 手指上滑=下一个，dy>0 手指下滑=上一个
+            // 放宽时间限制，避免慢速滑动无法触发
+            if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 40) {
+                if (dy < 0) next();
+                else prev();
+                return;
+            }
+            // 点击（位移<10px）：切换当前视频播放/暂停
+            if (Math.abs(dx) < 10 && Math.abs(dy) < 10 && state.currentVideo) {
+                // 点击在提示/覆盖层上，不触发切换
+                if (e.target && e.target.closest && (
+                    e.target.closest('.mv-unmute-tip') ||
+                    e.target.closest('.mv-tap-play'))) return;
+                e.preventDefault(); // 阻止后续 click 事件，避免双触发
+                toggleVideoPlay();
+            }
+        }, { passive: false });
+
+        // 桌面 click：仅在非触摸设备生效（通过 touchend 是否触发过判断）
+        var lastTouchTime = 0;
+        dom.stage.addEventListener('touchend', function () {
+            lastTouchTime = Date.now();
+        }, { passive: true });
+        dom.stage.addEventListener('click', function (e) {
+            if (state.zoomed) return;
+            if (!state.currentVideo) return;
+            // 如果是触摸事件刚触发的 click，忽略（避免双触发）
+            if (Date.now() - lastTouchTime < 500) return;
+            if (e.target && e.target.closest && (
+                e.target.closest('.mv-unmute-tip') ||
+                e.target.closest('.mv-tap-play'))) return;
+            toggleVideoPlay();
+        });
+
+        function next() {
+            if (state.isLoading) return;
+            if (state.currentIndex < state.filteredPhotos.length - 1) {
+                state.currentIndex++;
+                renderCurrent();
+            } else {
+                toast('已经是最后一张');
+            }
+        }
+        function prev() {
+            if (state.isLoading) return;
+            if (state.currentIndex > 0) {
+                state.currentIndex--;
+                renderCurrent();
+            } else {
+                toast('已经是第一张');
+            }
+        }
+
+        // ===== 预加载相邻 =====
+        function preloadNeighbors() {
+            var arr = state.filteredPhotos;
+            var i = state.currentIndex;
+            if (i + 1 < arr.length) {
+                var np = arr[i + 1];
+                if (np.file_type !== 'video') {
+                    var n = new Image();
+                    n.src = np.original_url;
+                }
+            }
+            if (i - 1 >= 0) {
+                var pp = arr[i - 1];
+                if (pp.file_type !== 'video') {
+                    var p = new Image();
+                    p.src = pp.original_url;
+                }
+            }
+        }
+
+        function updateHeader() {
+            if (dom.albumName) dom.albumName.textContent = state.albumName || '';
+        }
+
+        // ===== 选集面板 =====
+        dom.fullLink.addEventListener('click', openEpisodePanel);
+
+        function openEpisodePanel() {
+            renderAlbumSelect();
+            renderEpisodeGrid();
+            dom.epMask.style.display = '';
+            dom.episodePanel.classList.add('show');
+            // 触发 mask 动画
+            setTimeout(function () { dom.epMask.classList.add('show'); }, 10);
+            state.isEpOpen = true;
+        }
+
+        function closeEpisodePanel() {
+            dom.epMask.classList.remove('show');
+            dom.episodePanel.classList.remove('show');
+            setTimeout(function () { dom.epMask.style.display = 'none'; }, 280);
+            state.isEpOpen = false;
+        }
+
+        dom.epClose.addEventListener('click', closeEpisodePanel);
+        dom.epMask.addEventListener('click', closeEpisodePanel);
+
+        // ===== 模拟模式切换 =====
+        dom.simMode.addEventListener('change', function () {
+            state.simMode = this.checked;
+            if (state.simMode) {
+                // 生成随机数字并显示操作栏
+                updateSimCounts();
+                dom.actions.style.display = '';
+            } else {
+                dom.actions.style.display = 'none';
+            }
+        });
+
+        // 生成模拟数字：喜欢 10-100万（格式 X.X万），评论 1000-9999
+        function updateSimCounts() {
+            // 喜欢：10万-100万
+            var likeRaw = 100000 + Math.floor(Math.random() * 900000);
+            dom.likeCount.textContent = formatSimLike(likeRaw);
+            // 评论：1000-9999
+            var commentRaw = 1000 + Math.floor(Math.random() * 9000);
+            dom.commentCount.textContent = commentRaw;
+        }
+
+        // 格式化喜欢数：10-100万，保留1位小数
+        function formatSimLike(n) {
+            var wan = n / 10000;
+            return wan.toFixed(1) + '万';
+        }
+
+        function renderAlbumSelect() {
+            var html = state.allAlbums.map(function (a) {
+                var sel = String(a.id) === String(state.albumId) ? ' selected' : '';
+                return '<option value="' + escapeHtml(a.id) + '"' + sel + '>' + escapeHtml(a.name) + '</option>';
+            }).join('');
+            dom.epAlbum.innerHTML = html;
+        }
+
+        function renderEpisodeGrid() {
+            if (state.filteredPhotos.length === 0) {
+                dom.epGrid.innerHTML = '<div class="mv-empty" style="grid-column:1/-1;">无照片</div>';
+                return;
+            }
+            var html = state.filteredPhotos.map(function (p, idx) {
+                var active = idx === state.currentIndex ? ' active' : '';
+                var badge = p.file_type === 'video' ? '<span class="mv-ep-item-badge">▶</span>' : '';
+                return '<div class="mv-ep-item' + active + '" data-idx="' + idx + '">' +
+                    '<img src="' + p.preview_url + '" loading="lazy">' +
+                    badge +
+                    '</div>';
+            }).join('');
+            dom.epGrid.innerHTML = html;
+            dom.epGrid.querySelectorAll('.mv-ep-item').forEach(function (el) {
+                el.addEventListener('click', function () {
+                    state.currentIndex = parseInt(el.getAttribute('data-idx'), 10);
+                    renderCurrent();
+                    closeEpisodePanel();
+                });
+            });
+            // 滚动到当前
+            var activeEl = dom.epGrid.querySelector('.mv-ep-item.active');
+            if (activeEl) activeEl.scrollIntoView({ block: 'center' });
+        }
+
+        // 筛选变化
+        dom.epType.addEventListener('change', function () {
+            state.filters.type = this.value;
+            applyFilters();
+            state.currentIndex = 0;
+            renderCurrent();
+            renderEpisodeGrid();
+        });
+        dom.epRating.addEventListener('change', function () {
+            state.filters.rating = this.value;
+            applyFilters();
+            state.currentIndex = 0;
+            renderCurrent();
+            renderEpisodeGrid();
+        });
+        dom.epAlbum.addEventListener('change', function () {
+            loadAlbum(this.value);
+            closeEpisodePanel();
+        });
+
+        // 微信浏览器：监听 WeixinJSBridgeReady 解锁自动播放
+        if (typeof WeixinJSBridge === 'undefined') {
+            document.addEventListener('WeixinJSBridgeReady', function () {
+                // 微信就绪后，尝试播放当前视频
+                if (state.currentVideo && state.currentVideo.paused) {
+                    try {
+                        state.currentVideo.muted = true;
+                        state.currentVideo.play().catch(function () {});
+                    } catch (_) {}
+                }
+            });
+        }
+
+        // 启动
+        init();
+    })();
+    </script>
+</body>
+</html>

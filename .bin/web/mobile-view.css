@@ -1,0 +1,609 @@
+/* 移动端短剧式浏览页：抖音/短剧风格 */
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+:root {
+    --color-primary: #667eea;
+    --color-secondary: #764ba2;
+    --color-bg: #000;
+    --color-text: #fff;
+    --color-text-secondary: rgba(255,255,255,0.7);
+    --radius-md: 12px;
+    --radius-lg: 16px;
+}
+
+html, body {
+    margin: 0; padding: 0;
+    background: #000;
+    color: var(--color-text);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 15px;
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+    height: 100vh;
+    height: 100dvh;
+}
+
+/* 全屏容器 */
+.mv-app {
+    position: fixed;
+    inset: 0;
+    background: #000;
+    overflow: hidden;
+}
+
+/* 主体展示区 */
+.mv-stage {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    touch-action: pan-y;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.mv-slide {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mv-slide img,
+.mv-slide video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    -webkit-touch-callout: none;
+    display: block;
+    background: #000;
+}
+
+/* 隐藏视频原生控件（全屏/下载/倍速/投屏/画中画按钮等） */
+.mv-slide video::-webkit-media-controls,
+.mv-slide video::-webkit-media-controls-enclosure,
+.mv-slide video::-webkit-media-controls-panel,
+.mv-slide video::-webkit-media-controls-play-button,
+.mv-slide video::-webkit-media-controls-current-time-display,
+.mv-slide video::-webkit-media-controls-time-remaining-display,
+.mv-slide video::-webkit-media-controls-timeline,
+.mv-slide video::-webkit-media-controls-volume-slider,
+.mv-slide video::-webkit-media-controls-mute-button,
+.mv-slide video::-webkit-media-controls-fullscreen-button,
+.mv-slide video::-webkit-media-controls-overlay-enclosure,
+.mv-slide video::-internal-media-controls-overlay-cast-button,
+.mv-slide video::-internal-media-controls-button {
+    display: none !important;
+    -webkit-appearance: none !important;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* 竖图铺满高度（仅图片保持比例，视频始终全屏铺满避免黑边） */
+.mv-slide img.portrait {
+    height: 100%;
+    width: auto;
+    max-width: 100%;
+}
+
+/* 加载占位 */
+.mv-loading {
+    color: var(--color-text-secondary);
+    font-size: 14px;
+    text-align: center;
+}
+
+.mv-loading-spinner {
+    width: 32px;
+    height: 32px;
+    border: 2px solid rgba(255,255,255,0.2);
+    border-top-color: var(--color-primary);
+    border-radius: 50%;
+    animation: mv-spin 0.8s linear infinite;
+    margin: 0 auto 8px;
+}
+
+@keyframes mv-spin {
+    to { transform: rotate(360deg); }
+}
+
+.mv-empty {
+    color: var(--color-text-secondary);
+    font-size: 14px;
+    text-align: center;
+    padding: 20px;
+}
+
+/* 顶部状态栏 */
+.mv-header {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    padding: 12px 16px;
+    padding-top: max(12px, env(safe-area-inset-top));
+    background: linear-gradient(to bottom, rgba(0,0,0,0.5), transparent);
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.mv-album-name {
+    color: var(--color-text);
+    font-size: 15px;
+    font-weight: 500;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+
+/* 右侧悬浮操作栏（类似抖音） */
+.mv-actions {
+    position: absolute;
+    right: 10px;
+    bottom: 140px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    z-index: 10;
+}
+
+.mv-action-btn {
+    background: none;
+    border: none;
+    color: var(--color-text);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 6px;
+    cursor: default;
+    pointer-events: none; /* 纯摆设，不响应点击 */
+}
+
+.mv-icon {
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* 去掉 drop-shadow，保证 SVG 纯白显示，不被滤镜混合变灰 */
+}
+
+.mv-icon svg {
+    width: 40px;
+    height: 40px;
+    opacity: 1 !important;
+    display: block;
+}
+
+.mv-icon svg path {
+    fill: #ffffff !important;
+    opacity: 1 !important;
+    stroke: none !important;
+}
+
+.mv-action-count {
+    font-size: 13px;
+    color: #ffffff !important;
+    font-weight: 500;
+    text-shadow: none;
+    min-height: 16px;
+}
+
+/* 底部信息条 */
+.mv-footer {
+    position: absolute;
+    left: 0;
+    right: 80px;
+    bottom: 0;
+    padding: 16px;
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+    background: transparent; /* 去掉黑色渐变遮罩 */
+    z-index: 10;
+    pointer-events: none;
+}
+
+.mv-title {
+    color: var(--color-text);
+    font-size: 15px;
+    font-weight: 500;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+    margin-bottom: 8px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.mv-full-link {
+    background: rgba(255,255,255,0.18);
+    border: 1px solid rgba(255,255,255,0.3);
+    color: var(--color-text);
+    padding: 8px 16px;
+    border-radius: 999px;
+    margin-top: 4px;
+    cursor: pointer;
+    pointer-events: auto;
+    font-size: 13px;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+/* 选集面板：从底部滑入 */
+.mv-drawer-mask {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.3);
+    z-index: 20;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+}
+
+.mv-drawer-mask.show {
+    opacity: 1;
+}
+
+.mv-episode-panel {
+    position: fixed;
+    left: 0; right: 0;
+    bottom: 0;
+    max-height: 75vh;
+    background: #1a1a1a;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    z-index: 21;
+    display: flex;
+    flex-direction: column;
+    transform: translateY(100%);
+    transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+    padding-bottom: env(safe-area-inset-bottom);
+}
+
+.mv-episode-panel.show {
+    transform: translateY(0);
+}
+
+.mv-drawer-header {
+    padding: 14px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: var(--color-text);
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.mv-drawer-close {
+    background: none;
+    border: none;
+    color: var(--color-text-secondary);
+    font-size: 26px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 4px 8px;
+}
+
+/* 模拟模式开关 */
+.mv-sim-toggle {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 10px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 999px;
+}
+.mv-sim-label {
+    font-size: 13px;
+    color: #ffffff;
+    font-weight: 600;
+}
+
+/* iOS 风格开关 - 加深颜色，更清晰 */
+.mv-switch {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+}
+.mv-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+.mv-switch-slider {
+    position: absolute;
+    cursor: pointer;
+    inset: 0;
+    background: rgba(255,255,255,0.35);
+    border-radius: 24px;
+    transition: 0.3s;
+    border: 1px solid rgba(255,255,255,0.2);
+}
+.mv-switch-slider::before {
+    content: "";
+    position: absolute;
+    height: 20px;
+    width: 20px;
+    left: 2px;
+    bottom: 2px;
+    background: #ffffff;
+    border-radius: 50%;
+    transition: 0.3s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+.mv-switch input:checked + .mv-switch-slider {
+    background: #22c55e;
+    border-color: rgba(255,255,255,0.3);
+}
+.mv-switch input:checked + .mv-switch-slider::before {
+    transform: translateX(20px);
+}
+
+/* 选集筛选条 */
+.mv-ep-filters {
+    padding: 12px 16px;
+    display: flex;
+    gap: 8px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+/* 自定义下拉框 */
+.mv-custom-select {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+}
+
+.mv-cs-display {
+    background: rgba(255,255,255,0.1);
+    color: var(--color-text);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: var(--radius-md);
+    padding: 8px 28px 8px 10px;
+    font-size: 13px;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    position: relative;
+    transition: border-color 0.2s, background 0.2s;
+}
+
+.mv-cs-display::after {
+    content: '';
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    width: 7px;
+    height: 7px;
+    border-right: 1.5px solid rgba(255,255,255,0.6);
+    border-bottom: 1.5px solid rgba(255,255,255,0.6);
+    transform: translateY(-65%) rotate(45deg);
+    transition: transform 0.2s;
+}
+
+.mv-custom-select.open .mv-cs-display {
+    border-color: var(--color-primary);
+    background: rgba(102,126,234,0.15);
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.mv-custom-select.open .mv-cs-display::after {
+    transform: translateY(-35%) rotate(-135deg);
+    border-color: var(--color-primary);
+}
+
+.mv-cs-options {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #2a2a2a;
+    border: 1px solid var(--color-primary);
+    border-top: none;
+    border-radius: 0 0 var(--radius-md) var(--radius-md);
+    max-height: 240px;
+    overflow-y: auto;
+    z-index: 30;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+}
+
+.mv-custom-select.open .mv-cs-options {
+    display: block;
+}
+
+.mv-cs-option {
+    padding: 10px 14px;
+    font-size: 13px;
+    color: var(--color-text);
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: background 0.15s;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+
+.mv-cs-option:last-child {
+    border-bottom: none;
+    border-radius: 0 0 var(--radius-md) var(--radius-md);
+}
+
+.mv-cs-option:hover {
+    background: rgba(255,255,255,0.08);
+}
+
+.mv-cs-option.active {
+    background: linear-gradient(135deg, var(--color-primary) 0%, #8b5cf6 100%);
+    color: #fff;
+    font-weight: 600;
+}
+
+/* 选集网格 */
+.mv-ep-grid {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 12px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+}
+
+.mv-ep-item {
+    position: relative;
+    width: 100%;
+    padding-bottom: 100%; /* 1:1 正方形，替代 aspect-ratio 提升兼容性 */
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    cursor: pointer;
+    background: #2a2a2a;
+    border: 2px solid transparent;
+}
+
+.mv-ep-item img {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.mv-ep-item.active {
+    border-color: var(--color-primary);
+}
+
+.mv-ep-item-badge {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    background: rgba(0,0,0,0.6);
+    color: var(--color-text);
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    z-index: 2;
+}
+
+/* 视频播放指示 */
+.mv-video-badge {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    background: rgba(0,0,0,0.6);
+    color: var(--color-text);
+    font-size: 12px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    z-index: 11;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    pointer-events: none;
+}
+
+/* 取消静音提示 */
+.mv-unmute-tip {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0,0,0,0.7);
+    color: var(--color-text);
+    padding: 10px 20px;
+    border-radius: 999px;
+    font-size: 13px;
+    z-index: 12;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid rgba(255,255,255,0.2);
+}
+
+/* 点击播放覆盖层（自动播放全部失败时显示） */
+.mv-tap-play {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0,0,0,0.7);
+    color: var(--color-text);
+    padding: 16px 24px;
+    border-radius: 16px;
+    font-size: 14px;
+    z-index: 13;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid rgba(255,255,255,0.2);
+}
+.mv-tap-play svg { display: block; }
+.mv-tap-play span { font-size: 13px; opacity: 0.9; }
+
+/* Toast 提示 */
+.mv-toast {
+    position: fixed;
+    left: 50%;
+    bottom: 220px;
+    transform: translate(-50%, 20px);
+    background: rgba(0,0,0,0.85);
+    color: var(--color-text);
+    padding: 8px 16px;
+    border-radius: 999px;
+    font-size: 13px;
+    z-index: 100;
+    opacity: 0;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    pointer-events: none;
+    white-space: nowrap;
+}
+
+.mv-toast.show {
+    opacity: 1;
+    transform: translate(-50%, 0);
+}
+
+/* 微信引导遮罩（复用 mobile-upload 风格） */
+.mv-wx-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 9999;
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-end;
+    padding: 60px 20px 0 0;
+}
+
+.mv-wx-arrow {
+    position: absolute;
+    top: 80px;
+    right: 14px;
+    width: 20px;
+    height: 90px;
+}
+
+.mv-wx-textbox {
+    background: #fff;
+    color: #1e293b;
+    padding: 12px 16px;
+    border-radius: 10px;
+    margin-top: 8px;
+    margin-right: 32px;
+    font-size: 14px;
+    line-height: 1.6;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+}
+
+.mv-wx-textbox b {
+    color: var(--color-primary);
+}

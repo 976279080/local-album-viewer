@@ -23,6 +23,8 @@ class StaticRouterMixin:
             '/upload.html': 'serve_upload',
             '/mobile-upload': 'serve_mobile_upload',
             '/mobile-upload.html': 'serve_mobile_upload',
+            '/mobile-view': 'serve_mobile_view',
+            '/mobile-view.html': 'serve_mobile_view',
             '/subscribe.html': 'serve_subscribe',
             '/generate_license.html': 'serve_generate_license',
             '/style.css': 'serve_style',
@@ -30,6 +32,7 @@ class StaticRouterMixin:
             '/upload.js': 'serve_upload_js',
             '/upload.css': 'serve_upload_css',
             '/mobile-upload.css': 'serve_mobile_upload_css',
+            '/mobile-view.css': 'serve_mobile_view_css',
             '/media-processor.js': 'serve_media_processor_js',
             '/vue.global.min.js': 'serve_vue_min',
             '/api/summary': 'handle_summary',
@@ -304,6 +307,14 @@ class StaticRouterMixin:
     def serve_mobile_upload_css(self, query: Dict[str, Any]) -> None:
         """提供手机端上传页CSS"""
         self.serve_file(WEB_DIR / 'mobile-upload.css', 'text/css')
+
+    def serve_mobile_view(self, query: Dict[str, Any]) -> None:
+        """提供手机端短剧式浏览页"""
+        self._serve_inlined_page('mobile-view.html', 'mobile-view.css', None, no_cache=True)
+
+    def serve_mobile_view_css(self, query: Dict[str, Any]) -> None:
+        """提供手机端浏览页CSS"""
+        self.serve_file(WEB_DIR / 'mobile-view.css', 'text/css')
 
     def serve_subscribe(self, query: Dict[str, Any]) -> None:
         """提供订阅介绍页（CSS/JS内联）"""

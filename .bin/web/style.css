@@ -989,6 +989,136 @@ body.detail-open #app { overflow-y: hidden; }
 .batch-tag-modal-content .tag-input-inline { margin-bottom: 12px; }
 .modal-actions { display: flex; gap: 12px; justify-content: flex-end; }
 
+/* 手机浏览二维码模态框 */
+.mobile-view-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+.mobile-view-modal-content {
+    position: relative;
+    background: var(--color-bg-card);
+    border-radius: var(--radius-xl);
+    padding: 28px 32px 24px;
+    max-width: 360px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+}
+.mobile-view-close {
+    position: absolute;
+    top: 12px;
+    right: 16px;
+    background: none;
+    border: none;
+    color: var(--color-text-secondary);
+    font-size: 24px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: var(--radius-md);
+    transition: all 0.2s;
+}
+.mobile-view-close:hover {
+    color: var(--color-text-primary);
+    background: var(--color-bg-input);
+}
+.mobile-view-modal-content h3 {
+    margin: 0 0 8px;
+    font-size: var(--font-size-xl);
+    font-weight: 600;
+    color: var(--color-text-primary);
+}
+.mobile-view-tip {
+    margin: 0 0 20px;
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-md);
+}
+.mobile-view-qr-wrap {
+    width: 220px;
+    height: 220px;
+    margin: 0 auto 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-bg-input);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+.mobile-view-qr-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+.mobile-view-qr-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+}
+.mobile-view-spinner {
+    width: 28px;
+    height: 28px;
+    border: 2px solid var(--color-border);
+    border-top-color: var(--color-primary);
+    border-radius: 50%;
+    animation: mv-modal-spin 0.8s linear infinite;
+}
+@keyframes mv-modal-spin {
+    to { transform: rotate(360deg); }
+}
+.mobile-view-qr-error {
+    color: var(--color-danger);
+    font-size: var(--font-size-sm);
+    line-height: 1.6;
+    text-align: center;
+    padding: 20px;
+}
+.mobile-view-url-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    background: var(--color-bg-input);
+    border-radius: var(--radius-md);
+    padding: 8px 12px;
+}
+.mobile-view-url {
+    flex: 1;
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+    word-break: break-all;
+    text-align: left;
+    font-family: monospace;
+}
+.mobile-view-copy-btn {
+    background: var(--color-primary);
+    color: #fff;
+    border: none;
+    padding: 6px 12px;
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-sm);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.2s;
+}
+.mobile-view-copy-btn:hover {
+    background: var(--color-primary-hover, var(--color-secondary));
+}
+.mobile-view-album-tip {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+}
+
 .rating-popup {
     position: fixed;
     background: var(--color-bg-card);

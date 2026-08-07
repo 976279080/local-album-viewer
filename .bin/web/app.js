@@ -73,7 +73,12 @@ const app = createApp({
             viewerIsDragging: false,
             viewerDragStart: { x: 0, y: 0 },
             viewerFitMode: true,
-            viewerFitScale: 1
+            viewerFitScale: 1,
+            showMobileViewModal: false,
+            mobileViewQrLoading: false,
+            mobileViewQrUrl: '',
+            mobileViewUrl: '',
+            mobileViewAlbumName: ''
         });
 
         const detailState = reactive({
@@ -393,6 +398,65 @@ const app = createApp({
             handleViewerKeyDown, handleViewerResize
         } = useViewer(ui, showToast);
 
+        // ============ 手机浏览二维码 ============
+        async function openMobileView() {
+            ui.showMobileViewModal = true;
+            ui.mobileViewQrLoading = true;
+            ui.mobileViewQrUrl = '';
+            ui.mobileViewUrl = '';
+            ui.mobileViewAlbumName = '';
+            try {
+                const res = await fetch('/api/lan-info');
+                const data = await res.json();
+                if (!data.ip || !data.port) throw new Error('获取局域网地址失败');
+                // 拼装 mobile-view URL，携带当前相册
+                let url = `http://${data.ip}:${data.port}/mobile-view`;
+                if (filter.album) {
+                    url += '?album=' + encodeURIComponent(filter.album);
+                    // 获取相册名
+                    const album = summary.value.members?.[filter.album];
+                    if (album) ui.mobileViewAlbumName = album.name;
+                }
+                ui.mobileViewUrl = url;
+                // 使用在线 API 生成二维码（与 upload.js 一致）
+                const qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=280x280&margin=10&data='
+                    + encodeURIComponent(url);
+                const img = new Image();
+                img.onload = () => {
+                    ui.mobileViewQrUrl = qrUrl;
+                    ui.mobileViewQrLoading = false;
+                };
+                img.onerror = () => {
+                    ui.mobileViewQrUrl = '';
+                    ui.mobileViewQrLoading = false;
+                };
+                img.src = qrUrl;
+            } catch (e) {
+                ui.mobileViewQrLoading = false;
+                ui.mobileViewQrUrl = '';
+                showToast('获取局域网地址失败：' + (e.message || ''), 'error');
+            }
+        }
+        function closeMobileView() {
+            ui.showMobileViewModal = false;
+        }
+        async function copyMobileViewUrl() {
+            if (!ui.mobileViewUrl) return;
+            try {
+                await navigator.clipboard.writeText(ui.mobileViewUrl);
+                showToast('链接已复制', 'success');
+            } catch (_) {
+                // 降级方案
+                const ta = document.createElement('textarea');
+                ta.value = ui.mobileViewUrl;
+                document.body.appendChild(ta);
+                ta.select();
+                try { document.execCommand('copy'); showToast('链接已复制', 'success'); }
+                catch (_) { showToast('复制失败，请手动选择复制', 'error'); }
+                ta.remove();
+            }
+        }
+
         // ============ 首页初始化 ============
         async function loadHomeInit(retries = C.RETRY_HOME_INIT) {
             try {
@@ -611,6 +675,10 @@ const app = createApp({
             changeSort,
             // 编辑模式
             toggleEditMode,
+            // 手机浏览
+            openMobileView,
+            closeMobileView,
+            copyMobileViewUrl,
             // 详情状态
             detailState,
             // 工具函数
